@@ -46,7 +46,7 @@ module Datetime =
 struct
   type 'a timezone = [> `Local | `UTC | `String of string ] as 'a
 
-  type 'a datetime = {
+  type 'a t = {
     timezone : 'a timezone;
     year     : int;
     month    : int;
@@ -55,15 +55,57 @@ struct
     minutes  : int;
     seconds  : int;
   }
+
+  (** Allows the time to be equal to 23:59:60 on any day because 
+      there are too many days to check and some days are yet to 
+      be determined in the future. *)
+  let validate { timezone; hours; minutes; seconds; year; month; day } =
+    hours >= 0 && hours <= 24
+    && minutes >= 0 && minutes <= 59
+    && seconds >= 0 && seconds <= 60
+    && year >= 0 && year <= 9999
+    && month > 0 && month < 13 
+    && day > 0 && day < 31
+    && (seconds <> 60 || (minutes = 59 && hours = 23)
+    && (match month with
+        | 2 -> day < 29 ||
+               (day = 29 && (year mod 4 = 0 && year mod 400 <> 0))
+        | 4 | 6 | 9 | 11 -> day <= 30
+        | 1 | 3 | 5 | 7 | 8 | 10 | 12 -> true
+        | _ -> assert false)
+
+  let to_string = function
+    | { year; month; day; hours; minutes; seconds; timezone = `Local } ->
+      sprintf "%04d%02d%02dT%02d%02d%02d" year month day hours minutes seconds
+    | { year; month; day; hours; minutes; seconds; timezone = `UTC } ->
+      sprintf "%04d%02d%02dT%02d%02d%02dZ" year month day hours minutes seconds
+    | { year; month; day; hours; minutes; seconds;
+        timezone = `String timezone } ->
+      sprintf "TZID=%s:%04d%02d%02dT%02d%02d%02dZ"
+        timezone
+        year month day hours minutes seconds
 end
 
 module Date =
 struct
-  type date = {
+
+  type t = {
     year     : int;
     month    : int;
     day      : int;
   }
+
+  let validate { year; month; day } =
+    year >= 0 && year <= 9999
+    && month > 0 && month < 13 
+    && day > 0 && day < 31
+    && (match month with
+        | 2 -> day < 29 ||
+               (day = 29 && (year mod 4 = 0 && year mod 400 <> 0))
+        | 4 | 6 | 9 | 11 -> day <= 30
+        | 1 | 3 | 5 | 7 | 8 | 10 | 12 -> true
+        | _ -> assert false)
+  let to_string { year; month; day } = sprintf "%04d%02d%02d" year month day
 end
 
 (* http://tools.ietf.org/html/rfc5545#section-3.3.11 (TEXT) *)
