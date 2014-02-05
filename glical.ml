@@ -3,6 +3,7 @@
 (* glical: A library to glance at iCal data using OCaml                  *)
 (* ********************************************************************* *)
 (* (c) 2013/2014, Philippe Wang <philippe.wang@cl.cam.ac.uk>             *)
+(* ********************************************************************* *)
 (* Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
    that the above copyright notice and this permission notice appear
@@ -18,8 +19,7 @@
    OF THIS SOFTWARE.                                                     *)
 (* ********************************************************************* *)
 
-
-(** This library needs OCaml >= 4.1.0  *)
+(** Important note: this library needs OCaml >= 4.1.0 *)
 
 
 open Printf
@@ -320,6 +320,36 @@ let parse_date (ln, cn : int*int) (s : string) =
       end
 
 
+
+(** [tree_map] keeps location and section names, it applies the
+    function [f] only to the values. *)
+let rec tree_map f = function
+  | `Block(loc, s, v)::tl -> `Block(loc, s, tree_map f v)::tree_map f tl
+  | `Assoc(loc, s, r)::tl -> `Assoc(loc, s, f r)::tree_map f tl
+  | [] -> []
+
+
+(** [tree_transform] keeps location and section names, it applies the
+    function [f] to all [`Assoc(loc, s, r)] elements. *)
+let rec tree_transform f = function
+  | `Block(loc, s, v)::tl ->
+    `Block(loc, s, tree_transform f v)::tree_transform f tl
+  | (`Assoc(loc, s, r) as e)::tl ->
+    f e::tree_transform f tl
+  | [] -> []
+
+
+let convert_dates t =
+  tree_transform
+    (function
+      | `Assoc(loc, "DTSTAMP", (`Text d | `Raw(_, d))) ->
+        `Assoc(loc, "DTSTAMP", parse_datetime loc d)
+      | x -> x)
+    t
+
+
+(* ********************************************************************* *)
+(* Testing junk below *)
 let x =
   lex_ical "BEGIN:VCALENDAR
 VERSION:2.0
@@ -372,35 +402,10 @@ let y = parse_ical x;;
 
 let () = () ;;
 
-(** [tree_map] keeps location and section names, it applies the
-    function [f] only to the values. *)
-let rec tree_map f = function
-  | `Block(loc, s, v)::tl -> `Block(loc, s, tree_map f v)::tree_map f tl
-  | `Assoc(loc, s, r)::tl -> `Assoc(loc, s, f r)::tree_map f tl
-  | [] -> []
 
 let _ = tree_map text_of_raw y;;
 
-
-(** [tree_transform] keeps location and section names, it applies the
-    function [f] to all [`Assoc(loc, s, r)] elements. *)
-let rec tree_transform f = function
-  | `Block(loc, s, v)::tl ->
-    `Block(loc, s, tree_transform f v)::tree_transform f tl
-  | (`Assoc(loc, s, r) as e)::tl ->
-    f e::tree_transform f tl
-  | [] -> []
-
 let _ = tree_transform text_of_raw y;;
-
-
-let convert_dates t =
-  tree_transform
-    (function
-      | `Assoc(loc, "DTSTAMP", (`Text d | `Raw(_, d))) ->
-        `Assoc(loc, "DTSTAMP", parse_datetime loc d)
-      | x -> x)
-    t
 
 let _ = 
   convert_dates y
