@@ -1,6 +1,25 @@
-(* -*- coding:utf-8; -*- *)
-(* (c) 2013/2014 Philippe Wang <philippe.wang@cl.cam.ac.uk> *)
-(* Licence: ICS *)
+(* -*- coding: utf-8; -*- *)
+(* ********************************************************************* *)
+(* glical: A library to glance at iCal data using OCaml                  *)
+(* ********************************************************************* *)
+(* (c) 2013/2014, Philippe Wang <philippe.wang@cl.cam.ac.uk>             *)
+(* Permission to use, copy, modify, and/or distribute this software
+   for any purpose with or without fee is hereby granted, provided
+   that the above copyright notice and this permission notice appear
+   in all copies.
+
+   THE SOFTWARE IS PROVIDED “AS IS” AND ISC DISCLAIMS ALL WARRANTIES
+   WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+   MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL ISC BE LIABLE FOR
+   ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY
+   DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+   WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
+   ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
+   OF THIS SOFTWARE.                                                     *)
+(* ********************************************************************* *)
+
+
+(** This library needs OCaml >= 4.1.0  *)
 
 
 open Printf
@@ -23,18 +42,29 @@ type line = {
   value_end: int * int;
 }
 
-type 'a timezone = [> `Local | `UTC | `String of string ] as 'a
+module Datetime =
+struct
+  type 'a timezone = [> `Local | `UTC | `String of string ] as 'a
 
-type 'a date = {
-  timezone : 'a timezone;
-  year     : int;
-  month    : int;
-  day      : int;
-  hours    : int;
-  minutes  : int;
-  seconds  : int;
-}
+  type 'a datetime = {
+    timezone : 'a timezone;
+    year     : int;
+    month    : int;
+    day      : int;
+    hours    : int;
+    minutes  : int;
+    seconds  : int;
+  }
+end
 
+module Date =
+struct
+  type date = {
+    year     : int;
+    month    : int;
+    day      : int;
+  }
+end
 
 (* http://tools.ietf.org/html/rfc5545#section-3.3.11 (TEXT) *)
 let text_of_raw :
@@ -201,13 +231,18 @@ let parse_ical l =
     syntax_error (sprintf "unexpected data")
       (fst v.name_start) (snd v.name_start)
 
-let parse_date (ln, cn : int*int) (s : string) =
+
+(** 
+
+http://tools.ietf.org/html/rfc2445#section-4.3.5
+*)
+let parse_datetime (ln, cn : int*int) (s : string) =
     let d = "19980130T134500" in
     let l = String.length d in
     let t = String.index d 'T' (* Won't fail. *) in
     if String.length s < l
     then
-      syntax_error (sprintf "invalid date format for %S" s) ln cn
+      syntax_error (sprintf "invalid date-time format for %S" s) ln cn
     else
       let timezone, offset =
         if String.sub s 0 5 = "TZID=" then
@@ -216,7 +251,7 @@ let parse_date (ln, cn : int*int) (s : string) =
             let tz = String.sub s 5 (i - 5) in
             tz, i+1
           else
-            syntax_error (sprintf "invalid date format for %S" s) ln cn
+            syntax_error (sprintf "invalid date-time format for %S" s) ln cn
         else
           "", 0
       in
@@ -227,7 +262,7 @@ let parse_date (ln, cn : int*int) (s : string) =
           then
             ()
           else
-            syntax_error (sprintf "invalid date format for %S, \
+            syntax_error (sprintf "invalid date-time format for %S, \
                                    character #%d is wrong" s i) ln cn
         done;
         let year = int_of_string (String.sub s offset 4)
@@ -241,21 +276,49 @@ let parse_date (ln, cn : int*int) (s : string) =
           then
             s.[String.length s - 1] = 'Z'
           else
-            syntax_error (sprintf "invalid date format for %S" s) ln cn
+            syntax_error (sprintf "invalid date-time format for %S" s) ln cn
         in
-        `Date{
-            timezone =
-              (if utc then `UTC
-               else if timezone <> "" then `String(timezone)
-               else `Local);
-            year = year;
-            month = month;
-            day = day;
-            hours = hours;
-            minutes = minutes;
-            seconds = seconds;
+        `Datetime{
+          Datetime.timezone =
+            (if utc then `UTC
+             else if timezone <> "" then `String(timezone)
+             else `Local);
+          year = year;
+          month = month;
+          day = day;
+          hours = hours;
+          minutes = minutes;
+          seconds = seconds;
         }
       end
+
+
+(** 
+
+http://tools.ietf.org/html/rfc2445#section-4.3.4
+*)
+let parse_date (ln, cn : int*int) (s : string) =
+    let d = "19980130" in
+    let l = String.length d in
+    if String.length s <> l
+    then
+      syntax_error (sprintf "invalid date format for %S" s) ln cn
+    else
+      begin
+        (try ignore(int_of_string s)
+         with Failure "int_of_string" ->
+           syntax_error (sprintf "invalid date format for %S" s) ln cn);
+        let year = int_of_string (String.sub s 0 4)
+        and month = int_of_string (String.sub s 4 2)
+        and day = int_of_string (String.sub s 6 2)
+        in
+        `Date{
+          Date.year = year;
+          month = month;
+          day = day;
+        }
+      end
+
 
 let x =
   lex_ical "BEGIN:VCALENDAR
@@ -335,7 +398,7 @@ let convert_dates t =
   tree_transform
     (function
       | `Assoc(loc, "DTSTAMP", (`Text d | `Raw(_, d))) ->
-        `Assoc(loc, "DTSTAMP", parse_date loc d)
+        `Assoc(loc, "DTSTAMP", parse_datetime loc d)
       | x -> x)
     t
 
