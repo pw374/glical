@@ -4,11 +4,12 @@ Glical: glancing at iCal data using OCaml
 Description
 -----------
 
-Glical is a  rather small library for OCaml  programmers to manipulate
-iCal  data.  Since  iCalendar \[1]  is gigantic  and very  hard if  not
-virtually impossible to  address fully, we here call iCal  a subset of
-iCalendar.  And since even iCal is  too big to really be addressed, we
-state that we provide a library that allows to glance at iCal data.
+Glical  is  a rather  small  library  for  OCaml \[1]  programmers  to
+manipulate iCal data.  Since iCalendar  \[2] is gigantic and very hard
+if not  virtually impossible  to address  fully, we  here call  iCal a
+subset of  iCalendar.  And  since even  iCal is too  big to  really be
+addressed, we state that we provide a library that allows to glance at
+iCal data.
 
 By "glancing iCal data" we mean  "processing iCal data" with as little
 knowledge of  the iCal(endar)  format as  possible.  This  library has
@@ -17,16 +18,18 @@ format are sufficient  for most people to transform some  iCal data or
 extract the information that they want from it.
 
 This library is implemented in pure  OCaml. This means that any direct
-user of this library should not have to worry about any dependency.
-This library requires some features introduced in OCaml 4.01.0 \[2], so
-it will not compile with previous versions of the OCaml compiler.
+user of  this library should not  have to worry about  any dependency.
+This library requires  some features introduced in  OCaml 4.01.0 \[3],
+so it will not compile with previous versions of the OCaml compiler.
 
 
-\[1]: F. Dawson  and D. Stenerson, *RFC2445:  Internet Calendaring and
+\[1]: The OCaml community web site: <http://ocaml.org>
+
+\[2]: F. Dawson  and D. Stenerson, *RFC2445:  Internet Calendaring and
 Scheduling    Core    Object   Specification    (iCalendar)*,    1998,
 <http://tools.ietf.org/html/rfc2445>
 
-\[2]: OCaml 4.01, <http://caml.inria.fr/pub/distrib/ocaml-4.01/>
+\[3]: OCaml 4.01, <http://caml.inria.fr/pub/distrib/ocaml-4.01/>
 
 
 Distribution
