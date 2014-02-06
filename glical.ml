@@ -66,13 +66,25 @@ struct
     && year >= 0 && year <= 9999
     && month > 0 && month < 13 
     && day > 0 && day < 31
-    && (seconds <> 60 || (minutes = 59 && hours = 23)
+    && (seconds < 60 || (minutes = 59 && hours = 23))
     && (match month with
         | 2 -> day < 29 ||
                (day = 29 && (year mod 4 = 0 && year mod 400 <> 0))
         | 4 | 6 | 9 | 11 -> day <= 30
         | 1 | 3 | 5 | 7 | 8 | 10 | 12 -> true
         | _ -> assert false)
+    && (match timezone with
+        | `Local | `UTC -> true
+        | `String t ->
+          let module X = struct exception Break end in
+          try
+            for i = 0 to String.length t - 1 do
+              match t.[i] with
+              | 'A' .. 'Z' | 'a' .. 'z' | '/' -> ()
+              | _ -> raise X.Break
+            done;
+            true
+          with X.Break -> false)
 
   let to_string = function
     | { year; month; day; hours; minutes; seconds; timezone = `Local } ->
