@@ -21,17 +21,20 @@
 
 (** Important note: this library needs OCaml >= 4.1.0 *)
 
+type 'a t = 'a element list constraint 'a = [> `Raw of location * string ]
+and 'a element =
+  | Block of location * name * 'a t
+  | Assoc of location * key * 'a constraint 'a = [> `Raw of location * string ]
+and location = int * int
+and name = string
+and key = string
 
-open Printf
 
-exception Syntax_error of string
-let syntax_error s ln cn = raise (Syntax_error (sprintf "(%d:%d): %s." ln cn s))
-let syntax_assert b s ln cn  = if not b then syntax_error s ln cn
 
 (** A [line] is made of a name and a value. Sometimes, the value of a [line] 
     in a file is better off being on several lines, in which case the [\n]
     has to be backslash-escaped. *)
-type line = {
+type line = { (* output of the lexer *)
   (*  *)
   name: string;
   (* *)
@@ -42,90 +45,17 @@ type line = {
   value_end: int * int;
 }
 
-module Datetime =
-struct
-  type 'a timezone = [> `Local | `UTC | `String of string ] as 'a
 
-  type 'a t = {
-    timezone : 'a timezone;
-    year     : int;
-    month    : int;
-    day      : int;
-    hours    : int;
-    minutes  : int;
-    seconds  : int;
-  }
 
-  (** Allows the time to be equal to 23:59:60 on any day because 
-      there are too many days to check and some days are yet to 
-      be determined in the future. *)
-  let validate { timezone; hours; minutes; seconds; year; month; day } =
-    hours >= 0 && hours <= 24
-    && minutes >= 0 && minutes <= 59
-    && seconds >= 0 && seconds <= 60
-    && year >= 0 && year <= 9999
-    && month > 0 && month < 13 
-    && day > 0 && day < 31
-    && (seconds < 60 || (minutes = 59 && hours = 23))
-    && (match month with
-        | 2 -> day < 29 ||
-               (day = 29 && (year mod 4 = 0 && year mod 400 <> 0))
-        | 4 | 6 | 9 | 11 -> day <= 30
-        | 1 | 3 | 5 | 7 | 8 | 10 | 12 -> true
-        | _ -> assert false)
-    && (match timezone with
-        | `Local | `UTC -> true
-        | `String t ->
-          let module X = struct exception Break end in
-          try
-            for i = 0 to String.length t - 1 do
-              match t.[i] with
-              | 'A' .. 'Z' | 'a' .. 'z' | '/' -> ()
-              | _ -> raise X.Break
-            done;
-            true
-          with X.Break -> false)
 
-  let to_string = function
-    | { year; month; day; hours; minutes; seconds; timezone = `Local } ->
-      sprintf "%04d%02d%02dT%02d%02d%02d" year month day hours minutes seconds
-    | { year; month; day; hours; minutes; seconds; timezone = `UTC } ->
-      sprintf "%04d%02d%02dT%02d%02d%02dZ" year month day hours minutes seconds
-    | { year; month; day; hours; minutes; seconds;
-        timezone = `String timezone } ->
-      sprintf "TZID=%s:%04d%02d%02dT%02d%02d%02dZ"
-        timezone
-        year month day hours minutes seconds
-end
+open Printf
 
-module Date =
-struct
+exception Syntax_error of string
+let syntax_error s ln cn = raise (Syntax_error (sprintf "(%d:%d): %s." ln cn s))
+let syntax_assert b s ln cn  = if not b then syntax_error s ln cn
 
-  type t = {
-    year     : int;
-    month    : int;
-    day      : int;
-  }
-
-  let validate { year; month; day } =
-    year >= 0 && year <= 9999
-    && month > 0 && month < 13 
-    && day > 0 && day < 31
-    && (match month with
-        | 2 -> day < 29 ||
-               (day = 29 && (year mod 4 = 0 && year mod 400 <> 0))
-        | 4 | 6 | 9 | 11 -> day <= 30
-        | 1 | 3 | 5 | 7 | 8 | 10 | 12 -> true
-        | _ -> assert false)
-  let to_string { year; month; day } = sprintf "%04d%02d%02d" year month day
-end
-
-(* http://tools.ietf.org/html/rfc5545#section-3.3.11 (TEXT) *)
-let text_of_raw :
-  ([> `Raw of (int*int) * string ] as 'a)
-  -> ([> `Text of (int*int) * string list ] as 'a)
-  =
-  function
+(** http://tools.ietf.org/html/rfc5545#section-3.3.11 (TEXT) *)
+let text_of_raw = function
   | `Raw((ln, cn) as location, s) ->
     let sl = String.length s in
       let open Buffer in
@@ -256,7 +186,7 @@ let parse_ical l =
       end
     | {name="BEGIN"; value=e} as v::tl ->
       let block, tl = loop_rev [] (Some e) tl in
-      loop ((`Block(v.name_start, e, block))::res) ob tl
+      loop ((Block(v.name_start, e, block))::res) ob tl
     | {name="END"; value=e} as v::tl ->
       begin match ob with
         | Some x when x = e ->
@@ -271,7 +201,7 @@ let parse_ical l =
       end
     | {name; value} as v::tl ->
       loop
-        ((`Assoc(v.name_start, name, `Raw(v.value_start, value)))::res)
+        ((Assoc(v.name_start, name, `Raw(v.value_start, value)))::res)
         ob
         tl
   and loop_rev res ob l =
@@ -286,11 +216,143 @@ let parse_ical l =
       (fst v.name_start) (snd v.name_start)
 
 
-(** 
+(** [tree_map] keeps location and section names, it applies the
+    function [f] only to the values. *)
+let rec tree_map f = function
+  | Block(loc, s, v)::tl -> Block(loc, s, tree_map f v)::tree_map f tl
+  | Assoc(loc, s, r)::tl -> Assoc(loc, s, f r)::tree_map f tl
+  | [] -> []
 
-http://tools.ietf.org/html/rfc2445#section-4.3.5
-*)
-let parse_datetime (ln, cn : int*int) (s : string) =
+
+(** [tree_transform] keeps location and section names, it applies the
+    function [f] to all [Assoc(loc, s, r)] elements. *)
+let rec tree_transform f = function
+  | Block(loc, s, v)::tl ->
+    Block(loc, s, tree_transform f v)::tree_transform f tl
+  | (Assoc(loc, s, r) as e)::tl ->
+    f e::tree_transform f tl
+  | [] -> []
+
+
+
+
+let limit_lines_to_75_bytes s =
+  let b = Buffer.create (2 * String.length s) in
+  let sl = String.length s in
+  let rec loop i l =
+    if i = sl then ()
+    else match s.[i] with
+      | '\t' ->
+        if l > 73 then
+          (Buffer.add_string b "\n ";
+           loop i 1)
+        else
+          Buffer.add_string b "\\t"
+      | '\n' ->
+        if l > 73 then
+          (Buffer.add_string b "\n ";
+           loop i 1)
+        else
+          Buffer.add_string b "\\n"
+      | '\r' ->
+        if l > 73 then
+          (Buffer.add_string b "\n ";
+           loop i 1)
+        else
+          Buffer.add_string b "\\r"
+      | c ->
+        if l > 74 || (l > (75-7) && c >= '\128') then
+          (Buffer.add_string b "\n ";
+           loop i 1)
+        else
+          (Buffer.add_char b c;
+           loop (i+1) (l+1))
+  in
+  loop 0 0;
+  Buffer.contents b
+
+
+let to_string f t =
+  let b = Buffer.create 42 in
+  let rec loop = function
+    | [] -> ()
+    | Block(_, s, v)::tl ->
+      bprintf b "BEGIN:%s\n" s;
+      loop v;
+      bprintf b "END:%s\n" s;
+      loop tl
+    | Assoc(_, s, r)::tl ->
+      Buffer.add_string b
+        (match r with
+         | `Text x -> limit_lines_to_75_bytes (s ^ ":" ^ x)
+         | `Raw(loc, x) -> s ^ ":" ^ x
+         | other -> f (Obj.magic other));
+      loop tl
+  in
+  loop t;
+  Buffer.contents b
+
+
+
+
+module Datetime =
+struct
+  (** http://tools.ietf.org/html/rfc2445#section-4.3.5 *)
+  
+  type 'a timezone = [> `Local | `UTC | `String of string ] as 'a
+
+  type 'a t = {
+    timezone : 'a timezone;
+    year     : int;
+    month    : int;
+    day      : int;
+    hours    : int;
+    minutes  : int;
+    seconds  : int;
+  }
+
+  (** Allows the time to be equal to 23:59:60 on any day because 
+      there are too many days to check and some days are yet to 
+      be determined in the future. *)
+  let validate { timezone; hours; minutes; seconds; year; month; day } =
+    hours >= 0 && hours <= 24
+    && minutes >= 0 && minutes <= 59
+    && seconds >= 0 && seconds <= 60
+    && year >= 0 && year <= 9999
+    && month > 0 && month < 13 
+    && day > 0 && day < 31
+    && (seconds < 60 || (minutes = 59 && hours = 23))
+    && (match month with
+        | 2 -> day < 29 ||
+               (day = 29 && (year mod 4 = 0 && year mod 400 <> 0))
+        | 4 | 6 | 9 | 11 -> day <= 30
+        | 1 | 3 | 5 | 7 | 8 | 10 | 12 -> true
+        | _ -> assert false)
+    && (match timezone with
+        | `Local | `UTC -> true
+        | `String t ->
+          let module X = struct exception Break end in
+          try
+            for i = 0 to String.length t - 1 do
+              match t.[i] with
+              | 'A' .. 'Z' | 'a' .. 'z' | '/' -> ()
+              | _ -> raise X.Break
+            done;
+            true
+          with X.Break -> false)
+
+  let to_string = function
+    | { year; month; day; hours; minutes; seconds; timezone = `Local } ->
+      sprintf "%04d%02d%02dT%02d%02d%02d" year month day hours minutes seconds
+    | { year; month; day; hours; minutes; seconds; timezone = `UTC } ->
+      sprintf "%04d%02d%02dT%02d%02d%02dZ" year month day hours minutes seconds
+    | { year; month; day; hours; minutes; seconds;
+        timezone = `String timezone } ->
+      sprintf "TZID=%s:%04d%02d%02dT%02d%02d%02dZ"
+        timezone
+        year month day hours minutes seconds
+
+    let parse (ln, cn : int*int) (s : string) =
     let d = "19980130T134500" in
     let l = String.length d in
     let t = String.index d 'T' (* Won't fail. *) in
@@ -332,8 +394,8 @@ let parse_datetime (ln, cn : int*int) (s : string) =
           else
             syntax_error (sprintf "invalid date-time format for %S" s) ln cn
         in
-        `Datetime{
-          Datetime.timezone =
+        {
+          timezone =
             (if utc then `UTC
              else if timezone <> "" then `String(timezone)
              else `Local);
@@ -346,12 +408,38 @@ let parse_datetime (ln, cn : int*int) (s : string) =
         }
       end
 
+    let parse_datetime t =
+      tree_transform
+        (function
+          | Assoc(loc, "DTSTAMP", (`Text d | `Raw(_, d))) ->
+            Assoc(loc, "DTSTAMP", `Datetime(parse loc d))
+          | x -> x)
+    t
+end
 
-(** 
+module Date =
+struct
+  (** http://tools.ietf.org/html/rfc2445#section-4.3.4 *)
 
-http://tools.ietf.org/html/rfc2445#section-4.3.4
-*)
-let parse_date (ln, cn : int*int) (s : string) =
+  type t = {
+    year     : int;
+    month    : int;
+    day      : int;
+  }
+
+  let validate { year; month; day } =
+    year >= 0 && year <= 9999
+    && month > 0 && month < 13 
+    && day > 0 && day < 31
+    && (match month with
+        | 2 -> day < 29 ||
+               (day = 29 && (year mod 4 = 0 && year mod 400 <> 0))
+        | 4 | 6 | 9 | 11 -> day <= 30
+        | 1 | 3 | 5 | 7 | 8 | 10 | 12 -> true
+        | _ -> assert false)
+  let to_string { year; month; day } = sprintf "%04d%02d%02d" year month day
+
+let parse (ln, cn : int*int) (s : string) =
     let d = "19980130" in
     let l = String.length d in
     if String.length s <> l
@@ -366,170 +454,74 @@ let parse_date (ln, cn : int*int) (s : string) =
         and month = int_of_string (String.sub s 4 2)
         and day = int_of_string (String.sub s 6 2)
         in
-        `Date{
-          Date.year = year;
+        {
+          year = year;
           month = month;
           day = day;
         }
       end
+end
 
 
 
-(** [tree_map] keeps location and section names, it applies the
-    function [f] only to the values. *)
-let rec tree_map f = function
-  | `Block(loc, s, v)::tl -> `Block(loc, s, tree_map f v)::tree_map f tl
-  | `Assoc(loc, s, r)::tl -> `Assoc(loc, s, f r)::tree_map f tl
-  | [] -> []
+(* (\* ********************************************************************* *\) *)
+(* (\* Testing junk below *\) *)
+(* let _x1 = *)
+(*   lex_ical "BEGIN:VCALENDAR *)
+(* VERSION:2.0 *)
+(* PRODID:-//ABC Corporation//NONSGML My Product//EN *)
+(* BEGIN:VTODO *)
+(* DTSTAMP:19980130T134500Z *)
+(* SEQUENCE:2 *)
+(* UID:uid4@host1.com *)
+(* ACTION:AUDIO *)
+(* TRIGGER:19980403T120000 *)
+(* ATTACH;FMTTYPE=audio/basic:http://example.com/pub/audio- *)
+(*  files/ssbanner.aud *)
+(* REPEAT:4 *)
+(* DURATION:PT1H *)
+(* END:VTODO *)
+(* END:VCALENDAR *)
+(* ";; *)
+
+(* let _y1 = parse_ical _x1;; *)
+
+(* let _x2 = *)
+(*   lex_ical "BEGIN:VCALENDAR *)
+(* VERSION:2.0 *)
+(* PRODID:-//ABC Corporation//NONSGML My Product//EN *)
+(* BEGIN:VJOURNAL *)
+(* DTSTAMP:19970324T120000Z *)
+(* DTSTAMP:TZID=America/New_York:19980119T020000 *)
+(* UID:uid5@host1.com *)
+(* ORGANIZER:MAILTO:jsmith@example.com *)
+(* STATUS:DRAFT *)
+(* CLASS:PUBLIC *)
+(* CATEGORIES:Project Report, XYZ, Weekly Meeting *)
+(* DESCRIPTION:Project xyz Review Meeting Minutes\\n *)
+(*  Agenda\\n1. Review of project version 1.0 requirements.\\n2. *)
+(*  Definition *)
+(*  of project processes.\\n3. Review of project schedule.\\n *)
+(*  Participants: John Smith, Jane Doe, Jim Dandy\\n-It was *)
+(*   decided that the requirements need to be signed off by *)
+(*   product marketing.\\n-Project processes were accepted.\\n *)
+(*  -Project schedule needs to account for scheduled holidays *)
+(*   and employee vacation time. Check with HR for specific *)
+(*   dates.\\n-New schedule will be distributed by Friday.\\n- *)
+(*  Next weeks meeting is cancelled. No meeting until 3/23. *)
+(* END:VJOURNAL *)
+(* END:VCALENDAR *)
+(* " *)
+(* ;; *)
+
+(* let _y2 = parse_ical _x2;; *)
+
+(* let () = () ;; *)
 
 
-(** [tree_transform] keeps location and section names, it applies the
-    function [f] to all [`Assoc(loc, s, r)] elements. *)
-let rec tree_transform f = function
-  | `Block(loc, s, v)::tl ->
-    `Block(loc, s, tree_transform f v)::tree_transform f tl
-  | (`Assoc(loc, s, r) as e)::tl ->
-    f e::tree_transform f tl
-  | [] -> []
+(* let _ = tree_map text_of_raw _y2;; *)
 
+(* let _ = tree_transform text_of_raw _y2;; *)
 
-let convert_dates t =
-  tree_transform
-    (function
-      | `Assoc(loc, "DTSTAMP", (`Text d | `Raw(_, d))) ->
-        `Assoc(loc, "DTSTAMP", parse_datetime loc d)
-      | x -> x)
-    t
-
-let limit_lines_to_75_bytes s =
-  let b = Buffer.create (2 * String.length s) in
-  let sl = String.length s in
-  let rec loop i l =
-    if i = sl then ()
-    else match s.[i] with
-      | '\t' ->
-        if l > 73 then
-          (Buffer.add_string b "\n ";
-           loop i 1)
-        else
-          Buffer.add_string b "\\t"
-      | '\n' ->
-        if l > 73 then
-          (Buffer.add_string b "\n ";
-           loop i 1)
-        else
-          Buffer.add_string b "\\n"
-      | '\r' ->
-        if l > 73 then
-          (Buffer.add_string b "\n ";
-           loop i 1)
-        else
-          Buffer.add_string b "\\r"
-      | c ->
-        if l > 74 || (l > (75-7) && c >= '\128') then
-          (Buffer.add_string b "\n ";
-           loop i 1)
-        else
-          (Buffer.add_char b c;
-           loop (i+1) (l+1))
-  in
-  loop 0 0;
-  Buffer.contents b
-
-
-let to_string t =
-  let b = Buffer.create 42 in
-  let rec loop = function
-    | [] -> ()
-    | `Block(_, s, v)::tl ->
-      bprintf b "BEGIN:%s\n" s;
-      loop v;
-      bprintf b "END:%s\n" s;
-      loop tl
-    | `Assoc(_, s, r)::tl ->
-      Buffer.add_string b (string_of_value s r);
-      loop tl
-  and string_of_value x = function
-    | `Text s ->
-      limit_lines_to_75_bytes ("x"^":"^"s")
-    | `Raw s -> x ^ ":" ^ s
-    | `Date { Date.year; month; day } ->
-      sprintf "%s:%04d%02d%02d" x year month day
-    | `Datetime { Datetime.year; month; day; 
-                  timezone; hours; minutes; seconds } ->
-      begin match timezone with
-        | `UTC ->
-          sprintf "%s:%04d%02d%02dT%02d%02d%02dZ"
-            x year month day hours minutes seconds
-        | `Local ->
-          sprintf "%s:%04d%02d%02dT%02d%02d%02d"
-            x year month day hours minutes seconds
-        | `String tz ->
-          sprintf "%s:TZID=%s:%04d%02d%02dT%02d%02d%02d"
-            x tz year month day hours minutes seconds
-      end
-  in
-  loop t;
-  Buffer.contents b
-
-(* ********************************************************************* *)
-(* Testing junk below *)
-let _x1 =
-  lex_ical "BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//ABC Corporation//NONSGML My Product//EN
-BEGIN:VTODO
-DTSTAMP:19980130T134500Z
-SEQUENCE:2
-UID:uid4@host1.com
-ACTION:AUDIO
-TRIGGER:19980403T120000
-ATTACH;FMTTYPE=audio/basic:http://example.com/pub/audio-
- files/ssbanner.aud
-REPEAT:4
-DURATION:PT1H
-END:VTODO
-END:VCALENDAR
-";;
-
-let _y1 = parse_ical _x1;;
-
-let _x2 =
-  lex_ical "BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//ABC Corporation//NONSGML My Product//EN
-BEGIN:VJOURNAL
-DTSTAMP:19970324T120000Z
-DTSTAMP:TZID=America/New_York:19980119T020000
-UID:uid5@host1.com
-ORGANIZER:MAILTO:jsmith@example.com
-STATUS:DRAFT
-CLASS:PUBLIC
-CATEGORIES:Project Report, XYZ, Weekly Meeting
-DESCRIPTION:Project xyz Review Meeting Minutes\\n
- Agenda\\n1. Review of project version 1.0 requirements.\\n2.
- Definition
- of project processes.\\n3. Review of project schedule.\\n
- Participants: John Smith, Jane Doe, Jim Dandy\\n-It was
-  decided that the requirements need to be signed off by
-  product marketing.\\n-Project processes were accepted.\\n
- -Project schedule needs to account for scheduled holidays
-  and employee vacation time. Check with HR for specific
-  dates.\\n-New schedule will be distributed by Friday.\\n-
- Next weeks meeting is cancelled. No meeting until 3/23.
-END:VJOURNAL
-END:VCALENDAR
-"
-;;
-
-let _y2 = parse_ical _x2;;
-
-let () = () ;;
-
-
-let _ = tree_map text_of_raw _y2;;
-
-let _ = tree_transform text_of_raw _y2;;
-
-let _ = 
-  convert_dates _y2
+(* let _ =  *)
+(*   Datetime.parse_datetime _y2 *)
