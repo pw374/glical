@@ -401,6 +401,41 @@ let convert_dates t =
       | x -> x)
     t
 
+let limit_lines_to_75_bytes s =
+  let b = Buffer.create (2 * String.length s) in
+  let sl = String.length s in
+  let rec loop i l =
+    if i = sl then ()
+    else match s.[i] with
+      | '\t' ->
+        if l > 73 then
+          (Buffer.add_string b "\n ";
+           loop i 1)
+        else
+          Buffer.add_string b "\\t"
+      | '\n' ->
+        if l > 73 then
+          (Buffer.add_string b "\n ";
+           loop i 1)
+        else
+          Buffer.add_string b "\\n"
+      | '\r' ->
+        if l > 73 then
+          (Buffer.add_string b "\n ";
+           loop i 1)
+        else
+          Buffer.add_string b "\\r"
+      | c ->
+        if l > 74 || (l > (75-7) && c >= '\128') then
+          (Buffer.add_string b "\n ";
+           loop i 1)
+        else
+          (Buffer.add_char b c;
+           loop (i+1) (l+1))
+  in
+  loop 0 0;
+  Buffer.contents b
+
 
 let to_string t =
   let b = Buffer.create 42 in
@@ -416,40 +451,7 @@ let to_string t =
       loop tl
   and string_of_value x = function
     | `Text s ->
-      let s = x ^ ":" ^ s in
-      let b = Buffer.create (2 * String.length s) in
-      let sl = String.length s in
-      let rec loop i l =
-        if i = sl then ()
-        else match s.[i] with
-          | '\t' ->
-            if l > 73 then
-              (Buffer.add_string b "\n ";
-              loop i 1)
-            else
-              Buffer.add_string b "\\t"
-          | '\n' ->
-            if l > 73 then
-              (Buffer.add_string b "\n ";
-              loop i 1)
-            else
-            Buffer.add_string b "\\n"
-          | '\r' ->
-            if l > 73 then
-              (Buffer.add_string b "\n ";
-              loop i 1)
-            else
-            Buffer.add_string b "\\r"
-          | c ->
-            if l > 74 || (l > (75-7) && c >= '\128') then
-              (Buffer.add_string b "\n ";
-              loop i 1)
-            else
-              (Buffer.add_char b c;
-               loop (i+1) (l+1))
-      in
-      loop 0 0;
-      Buffer.contents b
+      limit_lines_to_75_bytes ("x"^":"^"s")
     | `Raw s -> x ^ ":" ^ s
     | `Date { Date.year; month; day } ->
       sprintf "%s:%04d%02d%02d" x year month day
