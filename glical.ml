@@ -402,9 +402,77 @@ let convert_dates t =
     t
 
 
+let to_string t =
+  let b = Buffer.create 42 in
+  let rec loop = function
+    | [] -> ()
+    | `Block(_, s, v)::tl ->
+      bprintf b "BEGIN:%s\n" s;
+      loop v;
+      bprintf b "END:%s\n" s;
+      loop tl
+    | `Assoc(_, s, r)::tl ->
+      Buffer.add_string b (string_of_value s r);
+      loop tl
+  and string_of_value x = function
+    | `Text s ->
+      let s = x ^ ":" ^ s in
+      let b = Buffer.create (2 * String.length s) in
+      let sl = String.length s in
+      let rec loop i l =
+        if i = sl then ()
+        else match s.[i] with
+          | '\t' ->
+            if l > 73 then
+              (Buffer.add_string b "\n ";
+              loop i 1)
+            else
+              Buffer.add_string b "\\t"
+          | '\n' ->
+            if l > 73 then
+              (Buffer.add_string b "\n ";
+              loop i 1)
+            else
+            Buffer.add_string b "\\n"
+          | '\r' ->
+            if l > 73 then
+              (Buffer.add_string b "\n ";
+              loop i 1)
+            else
+            Buffer.add_string b "\\r"
+          | c ->
+            if l > 74 || (l > (75-7) && c >= '\128') then
+              (Buffer.add_string b "\n ";
+              loop i 1)
+            else
+              (Buffer.add_char b c;
+               loop (i+1) (l+1))
+      in
+      loop 0 0;
+      Buffer.contents b
+    | `Raw s -> x ^ ":" ^ s
+    | `Date { Date.year; month; day } ->
+      sprintf "%s:%04d%02d%02d" x year month day
+    | `Datetime { Datetime.year; month; day; 
+                  timezone; hours; minutes; seconds } ->
+      begin match timezone with
+        | `UTC ->
+          sprintf "%s:%04d%02d%02dT%02d%02d%02dZ"
+            x year month day hours minutes seconds
+        | `Local ->
+          sprintf "%s:%04d%02d%02dT%02d%02d%02d"
+            x year month day hours minutes seconds
+        | `String tz ->
+          sprintf "%s:TZID=%s:%04d%02d%02dT%02d%02d%02d"
+            x tz year month day hours minutes seconds
+      end
+  in
+  loop t;
+  Buffer.contents b
+
 (* ********************************************************************* *)
 (* Testing junk below *)
-let x =
+let _x1 =
   lex_ical "BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//ABC Corporation//NONSGML My Product//EN
@@ -422,9 +490,9 @@ END:VTODO
 END:VCALENDAR
 ";;
 
-let y = parse_ical x;;
+let _y1 = parse_ical _x1;;
 
-let x =
+let _x2 =
   lex_ical "BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//ABC Corporation//NONSGML My Product//EN
@@ -452,14 +520,14 @@ END:VCALENDAR
 "
 ;;
 
-let y = parse_ical x;;
+let _y2 = parse_ical _x2;;
 
 let () = () ;;
 
 
-let _ = tree_map text_of_raw y;;
+let _ = tree_map text_of_raw _y2;;
 
-let _ = tree_transform text_of_raw y;;
+let _ = tree_transform text_of_raw _y2;;
 
 let _ = 
-  convert_dates y
+  convert_dates _y2
