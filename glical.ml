@@ -21,6 +21,8 @@
 
 (** Important note: this library needs OCaml >= 4.1.0 *)
 
+module Ical =
+struct
 type 'a t = 'a element list constraint 'a = [> `Raw of location * string ]
 and 'a element =
   | Block of location * name * 'a t
@@ -44,7 +46,8 @@ type line = { (* output of the lexer *)
   value_start: int * int;
   value_end: int * int;
 }
-
+end
+include Ical
 
 
 
@@ -408,13 +411,14 @@ struct
         }
       end
 
-    let parse_datetime t =
-      tree_transform
-        (function
+    let f = (function
           | Assoc(loc, "DTSTAMP", (`Text d | `Raw(_, d))) ->
             Assoc(loc, "DTSTAMP", `Datetime(parse loc d))
           | x -> x)
-    t
+    let parse_datetime t =
+      tree_transform
+        f
+        t
 end
 
 module Date =
