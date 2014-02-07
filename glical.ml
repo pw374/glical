@@ -58,7 +58,7 @@ let syntax_error s ln cn = raise (Syntax_error (sprintf "(%d:%d): %s." ln cn s))
 let syntax_assert b s ln cn  = if not b then syntax_error s ln cn
 
 (** http://tools.ietf.org/html/rfc5545#section-3.3.11 (TEXT) *)
-let text_of_raw = function
+let text_of_raw (label:string) = function
   | `Raw((ln, cn) as location, s) ->
     let sl = String.length s in
       let open Buffer in
@@ -95,8 +95,8 @@ let text_of_raw = function
              feeds read by this program do comply with RFC 5545. *)
           | c -> add_char b c; loop accu (i+1)
       in
-      `Text(location, List.rev (loop [] 0))
-  | x -> x
+      label, `Text(location, List.rev (loop [] 0))
+  | x -> label, x
 
 let lex_ical s =
   let name = Buffer.create 42

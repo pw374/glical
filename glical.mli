@@ -76,9 +76,11 @@ val parse_ical : line list -> [> `Raw of location * string ] Ical.t
     each pair of "key x value". Locations are preserved and cannot be
     changed. *)
 val tree_map :
-  (string -> ([> `Raw of location * string ] as 'a) ->
-   (string * ([> `Raw of location * string ] as 'b))) ->
-  'a Ical.t -> 'b Ical.t
+  (
+    string -> 
+    ([> `Raw of location * string ] as 'a) ->
+    (string * ([> `Raw of location * string ] as 'b))
+  ) -> 'a Ical.t -> 'b Ical.t
 
 (** [tree_transform] is like [tree_map] except that the function
     is applied to the whole [Assoc(_)] node. *)
@@ -90,10 +92,12 @@ val tree_transform :
 
 (* Value formats *)
 (* ******************************************************************** *)
+(** [text_of_raw] *)
 val text_of_raw :
+  string ->
   ([> `Raw of (int * int) * string
    | `Text of (int * int) * string list ] as 'a)
-  -> 'a
+  -> string * 'a
 
 
 module Datetime :
