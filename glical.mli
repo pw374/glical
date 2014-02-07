@@ -131,9 +131,22 @@ val ical_format : string -> string
 
 (* To string *)
 (* ******************************************************************** *)
+(** [to_string f ical] returns the string that represents [ical].
+    [ical] shall have any value of type 
+    [> `Raw of location * string | `Text of string ]
+    union the type of any value that the function [f] can convert to string.
+    Elements that couldn't be properly converted to a string are converted
+    to the empty string. 
+    [f x] shall return [None] when [f] cannot convert [x] to a string,
+    and [Some s] when [s] is the string representation for [x]; and it
+    would be very wrong to return [Some ""] when the proper value should
+    be [None].
+    Note that [f] can override the default conversion semantics for elements of
+    the type [`Raw of location * string | `Text of string ].
+*)
 val to_string :
-  (([> ] as 'a) -> string) ->
-  [> `Raw of location * string | `Text of string ]
+  (([> ] as 'a) -> string option) ->
+  ([> `Raw of location * string | `Text of string ] as 'a)
     Ical.t -> string
 
 

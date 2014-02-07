@@ -334,10 +334,13 @@ let to_string f t =
       loop tl
     | Assoc(_, s, r)::tl ->
       Buffer.add_string b
-        (match r with
-         | `Text x -> ical_format (s ^ ":" ^ x)
-         | `Raw(loc, x) -> s ^ ":" ^ x
-         | other -> f (Obj.magic other));
+        (match f r with
+         | Some x -> ical_format (s ^ ":" ^ x)
+         | None ->
+           match r with
+           | `Text x -> ical_format (s ^ ":" ^ x)
+           | `Raw(loc, x) -> s ^ ":" ^ x
+           | _ -> "");
       loop tl
   in
   loop t;
