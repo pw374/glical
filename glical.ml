@@ -115,7 +115,7 @@ let lex_ical s =
       ::lines
     else
       match s.[i] with
-        | '\n' ->
+      | '\n' ->
             begin
               syntax_assert (not nl) "unexpected double newline" lc cc;
               if i >= sl-1 then
@@ -147,7 +147,7 @@ let lex_ical s =
                     (i+2) colon false (lc+1) 0
                 end
             end
-        | '\r' -> (* just ignore \r for now *)
+      | '\r' -> (* just ignore \r for now *)
         loop lines (i+1) colon nl lc cc
       | ' ' as c ->
         syntax_assert colon "unexpected space before colon" lc cc;
@@ -239,33 +239,39 @@ let rec tree_transform f = function
 
 
 
-let limit_lines_to_75_bytes s =
+let ical_format s = (* limit lines to 75 bytes *)
   let b = Buffer.create (2 * String.length s) in
   let sl = String.length s in
   let rec loop i l =
     if i = sl then ()
     else match s.[i] with
-      | '\t' ->
-        if l > 73 then
-          (Buffer.add_string b "\n ";
-           loop i 1)
-        else
-          Buffer.add_string b "\\t"
       | '\n' ->
         if l > 73 then
-          (Buffer.add_string b "\n ";
+          (Buffer.add_string b "\r\n ";
            loop i 1)
         else
           Buffer.add_string b "\\n"
-      | '\r' ->
+      | '\\' ->
         if l > 73 then
-          (Buffer.add_string b "\n ";
+          (Buffer.add_string b "\r\n ";
            loop i 1)
         else
-          Buffer.add_string b "\\r"
+          Buffer.add_string b "\\\\"
+      | ';' ->
+        if l > 73 then
+          (Buffer.add_string b "\r\n ";
+           loop i 1)
+        else
+          Buffer.add_string b "\\;"
+      | ',' ->
+        if l > 73 then
+          (Buffer.add_string b "\r\n ";
+           loop i 1)
+        else
+          Buffer.add_string b "\\,"
       | c ->
         if l > 74 || (l > (75-7) && c >= '\128') then
-          (Buffer.add_string b "\n ";
+          (Buffer.add_string b "\r\n ";
            loop i 1)
         else
           (Buffer.add_char b c;
@@ -287,7 +293,7 @@ let to_string f t =
     | Assoc(_, s, r)::tl ->
       Buffer.add_string b
         (match r with
-         | `Text x -> limit_lines_to_75_bytes (s ^ ":" ^ x)
+         | `Text x -> ical_format (s ^ ":" ^ x)
          | `Raw(loc, x) -> s ^ ":" ^ x
          | other -> f (Obj.magic other));
       loop tl
