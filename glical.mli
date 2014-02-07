@@ -139,18 +139,27 @@ module Datetime :
     (** [to_string] performs a conversion to a string *)
     val to_string : [ `Local | `String of string | `UTC ] t -> string
 
-    (** *)
+    (** [parse loc s] extract a date-time from [s]. If it fails to
+        read a date-time, it raises a [Syntax_error _] exception.
+        Note that [loc] is only used to know the location when the
+        parsing fails. *)
     val parse :
-      int * int -> string -> [> `Local | `String of string | `UTC ] t
+      location -> string -> [> `Local | `String of string | `UTC ] t
 
+    (** [parse_datetime ical] applies [parse] to each element
+        of [ical] that satisfies the following pattern
+        [("DTSTAMP", (`Text [_] | `Raw _))] *)
     val parse_datetime :
       ([> `Datetime of [> `Local | `String of string | `UTC ] t
        | `Raw of location * string
-       | `Text of string ]
+       | `Text of string list ]
        as 'a) Ical.t -> 'a Ical.t
   end
 
 
+(** 
+(http://tools.ietf.org/html/rfc2445#section-4.3.4)
+*)
 module Date :
   sig
     type t = { year : int; month : int; day : int; }

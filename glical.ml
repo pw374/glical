@@ -465,13 +465,14 @@ struct
         }
       end
 
-    let f = (function
-          | Assoc(loc, "DTSTAMP", (`Text d | `Raw(_, d))) ->
-            Assoc(loc, "DTSTAMP", `Datetime(parse loc d))
-          | x -> x)
     let parse_datetime t =
       tree_transform
-        f
+        (function
+          | Assoc(loc, "DTSTAMP", `Text [d]) ->
+            Assoc(loc, "DTSTAMP", `Datetime(parse loc d))
+          | Assoc(loc, "DTSTAMP", `Raw(dloc, d)) ->
+            Assoc(loc, "DTSTAMP", `Datetime(parse dloc d))
+          | x -> x)
         t
 end
 
