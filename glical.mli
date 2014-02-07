@@ -24,19 +24,32 @@
 
 *)
 
+(* A location is a line number and a column number. *)
+type location = int * int
+
+(* A name is a string. *)
+and name = string
+
+(* A key is a string. *)
+and key = string
+
+
+(** Module for the representation of iCalendar data. *)
 module Ical : sig
-  type 'a t = ([> `Raw of location * string ] as 'a) element list 
-  and 'a element =
-    | Block of location * name * 'a t
-    | Assoc of location * key * ([> `Raw of location * string ] as 'a)
-  and location = int * int
-  and name = string
-  and key = string
+  (** iCalendar data is a list of elements. *)
+  type 'value t = ([> `Raw of location * string ] as 'value) element list
+
+  (** An element is either a block, which is a characterized by a name
+      and a list of elements, or a pair, which associates a key to a
+      value. A value can be pretty much anything, that depends on the
+      context in which it's found, however any value has a "raw"
+      representation, which is the basically the bytes in the
+      iCalendar data. *)
+  and 'value element =
+    | Block of location * name * 'value t
+    | Assoc of location * key * ([> `Raw of location * string ] as 'value)
 end
 
-type location = Ical.location
-and name = Ical.name
-and key = Ical.key
 
 
 (* Syntax errors *)
@@ -130,10 +143,13 @@ module Datetime :
     and 'a timezone = 'a
       constraint 'a = [> `Local | `String of string | `UTC ]
 
-    (** [validate s] returns [true] if the format of [s] satisfies a 
-        set of criteria (which is not enough to ensure that [s] is valid
-        but a lot of errors can be detected). 
-        Otherwise it returns [false]. *)
+    (** [validate s] returns [true] if the format of [s] satisfies a
+        set of criteria (which is not enough to ensure that [s] is
+        valid but a lot of errors can be detected).  Otherwise it
+        returns [false]. Leap seconds are accepted on any year because
+        there isn't a list of existing or future leap seconds in this
+        library. However leap seconds are only accepted for June and
+        December. *)
     val validate : [ `Local | `String of string | `UTC ] t -> bool
 
     (** [to_string] performs a conversion to a string *)
@@ -157,15 +173,27 @@ module Datetime :
   end
 
 
-(** 
-(http://tools.ietf.org/html/rfc2445#section-4.3.4)
-*)
+(** A module to represent date values.
+    (http://tools.ietf.org/html/rfc2445#section-4.3.4) *)
 module Date :
   sig
+    (** type to represent a date *)
     type t = { year : int; month : int; day : int; }
+             
+    (** [validate d] returns [true] if [d] looks valid, i.e., the year
+        has to hold in 4 decimal digits, the month has to be valid and
+        the day has to be valid according to the month and year 
+        (leap years are taken into account). *)
     val validate : t -> bool
+
+    (** [to_string d] returns [d] in a string format that can be used
+        for iCalendar output. *)
     val to_string : t -> string
-    val parse : int * int -> string -> t
+
+    (** [parse loc s] parses a date from the string [s], it raises
+        a [Syntax_error _] exception if it fails and uses [loc] as the 
+        location for the error message. *)
+    val parse : location -> string -> t
   end
 (* ******************************************************************** *)
 

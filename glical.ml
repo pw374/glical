@@ -21,17 +21,16 @@
 
 (** Important note: this library needs OCaml >= 4.1.0 *)
 
+type location = int * int
+and name = string
+and key = string
+
 module Ical =
 struct
 type 'a t = 'a element list constraint 'a = [> `Raw of location * string ]
 and 'a element =
   | Block of location * name * 'a t
   | Assoc of location * key * 'a constraint 'a = [> `Raw of location * string ]
-and location = int * int
-and name = string
-and key = string
-
-
 
 (** A [line] is made of a name and a value. Sometimes, the value of a [line] 
     in a file is better off being on several lines, in which case the [\n]
@@ -378,7 +377,8 @@ struct
     && year >= 0 && year <= 9999
     && month > 0 && month < 13 
     && day > 0 && day < 31
-    && (seconds < 60 || (minutes = 59 && hours = 23))
+    && (seconds < 60 || (minutes = 59 && hours = 23 && 
+                         (month = 6 || month = 12)))
     && (match month with
         | 2 -> day < 29 ||
                (day = 29 && (year mod 4 = 0 && year mod 400 <> 0))
@@ -478,8 +478,6 @@ end
 
 module Date =
 struct
-  (** http://tools.ietf.org/html/rfc2445#section-4.3.4 *)
-
   type t = {
     year     : int;
     month    : int;
