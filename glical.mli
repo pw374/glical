@@ -92,7 +92,13 @@ val tree_transform :
 
 (* Value formats *)
 (* ******************************************************************** *)
-(** [text_of_raw] *)
+(** [text_of_raw label value] converts [`Raw(loc, s)] to [`Text(loc,sl)]
+    where [sl] is the list of text values in [s]. Note that it is a list
+    because in iCalendar a label can be associated with multiple values.
+    Note that [loc] isn't changed, and [sl] is a [string list].
+    This conversion interpretes backslash-escaped characters and
+    commas, the latter are used for separating multiple values.
+    (http://tools.ietf.org/html/rfc5545#section-3.3.11) *)
 val text_of_raw :
   string ->
   ([> `Raw of (int * int) * string
@@ -100,6 +106,16 @@ val text_of_raw :
   -> string * 'a
 
 
+(** A module to represent date-time values. Since there are way
+    too many possible values for timezones, this modules distinguishes
+    3 possibilities: [`Local] represents localtime, in practice this
+    means that there's no timezone indicator; [`UTC] represents UTC,
+    in practice it means that the values ens with an additional Z character
+    if you compare to localtime; and [`String s] where the timezone
+    is encoded in the string [s]. [`String s] is used when the date-time
+    value has a field "TZID=".
+
+   (http://tools.ietf.org/html/rfc2445#section-4.3.5) *)
 module Datetime :
   sig
     type 'a t = {
@@ -113,10 +129,20 @@ module Datetime :
     } constraint 'a = [> `Local | `String of string | `UTC ]
     and 'a timezone = 'a
       constraint 'a = [> `Local | `String of string | `UTC ]
+
+    (** [validate s] returns [true] if the format of [s] satisfies a 
+        set of criteria (which is not enough to ensure that [s] is valid
+        but a lot of errors can be detected). 
+        Otherwise it returns [false]. *)
     val validate : [ `Local | `String of string | `UTC ] t -> bool
+
+    (** [to_string] performs a conversion to a string *)
     val to_string : [ `Local | `String of string | `UTC ] t -> string
+
+    (** *)
     val parse :
       int * int -> string -> [> `Local | `String of string | `UTC ] t
+
     val parse_datetime :
       ([> `Datetime of [> `Local | `String of string | `UTC ] t
        | `Raw of location * string
