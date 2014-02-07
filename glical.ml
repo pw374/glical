@@ -269,8 +269,50 @@ let ical_format s = (* limit lines to 75 bytes *)
            loop i 1)
         else
           Buffer.add_string b "\\,"
+      | c when (int_of_char c land 0b1110_0000 = 0b1100_0000) ->
+        if l > 73 then
+          (Buffer.add_string b "\r\n ";
+           loop i 1)
+        else
+          (Buffer.add_char b c;
+           loop (i+1) (l+1))
+      | c when (int_of_char c land 0b1111_0000 = 0b1110_0000) ->
+        if l > 72 then
+          (Buffer.add_string b "\r\n ";
+           loop i 1)
+        else
+          (Buffer.add_char b c;
+           loop (i+1) (l+1))
+      | c when (int_of_char c land 0b1111_1000 = 0b1111_0000) ->
+        if l > 71 then
+          (Buffer.add_string b "\r\n ";
+           loop i 1)
+        else
+          (Buffer.add_char b c;
+           loop (i+1) (l+1))
+      | c when (int_of_char c land 0b1111_1100 = 0b1111_1000) ->
+        if l > 70 then
+          (Buffer.add_string b "\r\n ";
+           loop i 1)
+        else
+          (Buffer.add_char b c;
+           loop (i+1) (l+1))
+      | c when (int_of_char c land 0b1111_1110 = 0b1111_1100) ->
+        if l > 69 then
+          (Buffer.add_string b "\r\n ";
+           loop i 1)
+        else
+          (Buffer.add_char b c;
+           loop (i+1) (l+1))
+      | c when (int_of_char c land 0b1111_1111 = 0b1111_1110) ->
+        if l > 68 then
+          (Buffer.add_string b "\r\n ";
+           loop i 1)
+        else
+          (Buffer.add_char b c;
+           loop (i+1) (l+1))
       | c ->
-        if l > 74 || (l > (75-7) && c >= '\128') then
+        if l > 74 then
           (Buffer.add_string b "\r\n ";
            loop i 1)
         else
