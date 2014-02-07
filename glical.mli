@@ -87,8 +87,6 @@ val text_of_raw :
 
 module Datetime :
   sig
-    type 'a timezone = 'a
-      constraint 'a = [> `Local | `String of string | `UTC ]
     type 'a t = {
       timezone : 'a timezone;
       year : int;
@@ -98,6 +96,8 @@ module Datetime :
       minutes : int;
       seconds : int;
     } constraint 'a = [> `Local | `String of string | `UTC ]
+    and 'a timezone = 'a
+      constraint 'a = [> `Local | `String of string | `UTC ]
     val validate : [ `Local | `String of string | `UTC ] t -> bool
     val to_string : [ `Local | `String of string | `UTC ] t -> string
     val parse :
@@ -108,6 +108,8 @@ module Datetime :
        | `Text of string ]
        as 'a) Ical.t -> 'a Ical.t
   end
+
+
 module Date :
   sig
     type t = { year : int; month : int; day : int; }
@@ -120,12 +122,18 @@ module Date :
 
 (* Formatting *)
 (* ******************************************************************** *)
-val limit_lines_to_75_bytes : string -> string
+(** [ical_format s] returns a string that satisfies the format contraints
+    of iCalendar: lines are limited to at most 75 bytes
+    (http://tools.ietf.org/html/rfc5545#section-3.1),
+    and some characters are backslash-escaped
+    (http://tools.ietf.org/html/rfc5545#section-3.3.11). *)
+val ical_format : string -> string
 
 (* To string *)
 (* ******************************************************************** *)
 val to_string :
-  ('a -> string) -> [> `Raw of location * string | `Text of string ] 
+  (([> ] as 'a) -> string) ->
+  [> `Raw of location * string | `Text of string ]
     Ical.t -> string
 
 
