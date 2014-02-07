@@ -49,6 +49,7 @@ val syntax_assert : bool -> string -> int -> int -> unit
 
 (* Lexing *)
 (* ******************************************************************** *)
+(** Type to represent a line. *)
 type line = {
   name : string;
   value : string;
@@ -57,20 +58,30 @@ type line = {
   value_end : int * int;
 }
 
+(** [lex_ical s] reads iCal data from the string [s] and returns a
+    list of [line]s. A [line] is not series of bytes separated by some
+    CRLF in [s] but a line in what the contents of [s] represents. *)
 val lex_ical : string -> line list
 (* ******************************************************************** *)
 
 (* Parsing *)
 (* ******************************************************************** *)
+(** [parse_ical l] returns the iCalendar tree that's encoded in [l] *)
 val parse_ical : line list -> [> `Raw of location * string ] Ical.t
 (* ******************************************************************** *)
 
 (* Data processing *)
 (* ******************************************************************** *)
+(** [tree_map f ical] is a map over [ical], where [f] is applied to
+    each pair of "key x value". Locations are preserved and cannot be
+    changed. *)
 val tree_map :
-  (([> `Raw of location * string ] as 'a) ->
-   ([> `Raw of location * string ] as 'b)) ->
+  (string -> ([> `Raw of location * string ] as 'a) ->
+   (string * ([> `Raw of location * string ] as 'b))) ->
   'a Ical.t -> 'b Ical.t
+
+(** [tree_transform] is like [tree_map] except that the function
+    is applied to the whole [Assoc(_)] node. *)
 val tree_transform :
   (([> `Raw of location * string ] as 'a) Ical.element ->
    ([> `Raw of location * string ] as 'b) Ical.element) ->

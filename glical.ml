@@ -222,8 +222,11 @@ let parse_ical l =
 (** [tree_map] keeps location and section names, it applies the
     function [f] only to the values. *)
 let rec tree_map f = function
-  | Block(loc, s, v)::tl -> Block(loc, s, tree_map f v)::tree_map f tl
-  | Assoc(loc, s, r)::tl -> Assoc(loc, s, f r)::tree_map f tl
+  | Block(loc, s, v)::tl ->
+    Block(loc, s, tree_map f v)::tree_map f tl
+  | Assoc(loc, s, r)::tl ->
+    let new_s, new_r = f s r in
+    Assoc(loc, new_s, new_r)::tree_map f tl
   | [] -> []
 
 
