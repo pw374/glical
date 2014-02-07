@@ -30,7 +30,7 @@ Scheduling    Core    Object   Specification    (iCalendar)*,    1998,
 <http://tools.ietf.org/html/rfc2445>
 
 \[3]: OCaml 4.01, <http://caml.inria.fr/pub/distrib/ocaml-4.01/>
-
+<http://caml.inria.fr/pub/distrib/ocaml-4.01/notes/Changes>
 
 Distribution
 ------------
