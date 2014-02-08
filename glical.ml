@@ -1,22 +1,8 @@
 (* -*- coding: utf-8; -*- *)
 (* ********************************************************************* *)
 (* glical: A library to glance at iCal data using OCaml                  *)
-(* ********************************************************************* *)
 (* (c) 2013/2014, Philippe Wang <philippe.wang@cl.cam.ac.uk>             *)
-(* ********************************************************************* *)
-(* Permission to use, copy, modify, and/or distribute this software
-   for any purpose with or without fee is hereby granted, provided
-   that the above copyright notice and this permission notice appear
-   in all copies.
-
-   THE SOFTWARE IS PROVIDED “AS IS” AND ISC DISCLAIMS ALL WARRANTIES
-   WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-   MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL ISC BE LIABLE FOR
-   ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY
-   DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
-   WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
-   ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
-   OF THIS SOFTWARE.                                                     *)
+(* Licence: ISC                                                          *)
 (* ********************************************************************* *)
 
 (** Important note: this library needs OCaml >= 4.1.0 *)
@@ -34,7 +20,7 @@ struct
     | Assoc of location * key * 'a
     constraint 'a = [> `Raw of location * string ]
 
-  (** A [line] is made of a name and a value. Sometimes, the value of a [line] 
+  (** A [line] is made of a name and a value. Sometimes, the value of a [line]
       in a file is better off being on several lines, in which case the [\n]
       has to be backslash-escaped. *)
   type line = { (* output of the lexer *)
@@ -97,7 +83,7 @@ let text_of_raw (label:string) = function
 
 let lex_ical s =
   let name = Buffer.create 42
-  and value = Buffer.create 42 
+  and value = Buffer.create 42
   and name_start = ref (0,0)
   and value_start = ref (0,0)
   in
@@ -487,17 +473,17 @@ struct
     seconds  : int;
   }
 
-  (** Allows the time to be equal to 23:59:60 on any day because 
-      there are too many days to check and some days are yet to 
+  (** Allows the time to be equal to 23:59:60 on any day because
+      there are too many days to check and some days are yet to
       be determined in the future. *)
   let validate { timezone; hours; minutes; seconds; year; month; day } =
     hours >= 0 && hours <= 24
     && minutes >= 0 && minutes <= 59
     && seconds >= 0 && seconds <= 60
     && year >= 0 && year <= 9999
-    && month > 0 && month < 13 
+    && month > 0 && month < 13
     && day > 0 && day < 31
-    && (seconds < 60 || (minutes = 59 && hours = 23 && 
+    && (seconds < 60 || (minutes = 59 && hours = 23 &&
                          (month = 6 || month = 12)))
     && (match month with
         | 2 -> day < 29 ||
@@ -606,7 +592,7 @@ struct
 
   let validate { year; month; day } =
     year >= 0 && year <= 9999
-    && month > 0 && month < 13 
+    && month > 0 && month < 13
     && day > 0 && day < 31
     && (match month with
         | 2 -> day < 29 ||
@@ -639,3 +625,22 @@ struct
       end
 end
 
+
+
+
+
+(* ********************************************************************* *)
+(* Permission to use, copy, modify, and/or distribute this software
+   for any purpose with or without fee is hereby granted, provided
+   that the above copyright notice and this permission notice appear
+   in all copies.
+
+   THE SOFTWARE IS PROVIDED “AS IS” AND ISC DISCLAIMS ALL WARRANTIES
+   WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+   MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL ISC BE LIABLE FOR
+   ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY
+   DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+   WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
+   ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
+   OF THIS SOFTWARE.                                                     *)
+(* ********************************************************************* *)

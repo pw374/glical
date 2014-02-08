@@ -1,22 +1,8 @@
 (* -*- coding: utf-8; -*- *)
 (* ********************************************************************* *)
 (* glical: A library to glance at iCal data using OCaml                  *)
-(* ********************************************************************* *)
 (* (c) 2013/2014, Philippe Wang <philippe.wang@cl.cam.ac.uk>             *)
-(* ********************************************************************* *)
-(* Permission to use, copy, modify, and/or distribute this software
-   for any purpose with or without fee is hereby granted, provided
-   that the above copyright notice and this permission notice appear
-   in all copies.
-
-   THE SOFTWARE IS PROVIDED “AS IS” AND ISC DISCLAIMS ALL WARRANTIES
-   WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-   MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL ISC BE LIABLE FOR
-   ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY
-   DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
-   WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
-   ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
-   OF THIS SOFTWARE.                                                     *)
+(* Licence: ISC                                                          *)
 (* ********************************************************************* *)
 
 (**
@@ -89,7 +75,7 @@ val parse_ical : line list -> [> `Raw of location * string ] Ical.t
     values only. Locations and keys are preserved. *)
 val map_values :
   (
-    string -> 
+    string ->
     ([> `Raw of location * string ] as 'a) ->
     (string * ([> `Raw of location * string ] as 'b))
   ) -> 'a Ical.t -> 'b Ical.t
@@ -202,10 +188,10 @@ module Date :
   sig
     (** type to represent a date *)
     type t = { year : int; month : int; day : int; }
-             
+
     (** [validate d] returns [true] if [d] looks valid, i.e., the year
         has to hold in 4 decimal digits, the month has to be valid and
-        the day has to be valid according to the month and year 
+        the day has to be valid according to the month and year
         (leap years are taken into account). *)
     val validate : t -> bool
 
@@ -214,7 +200,7 @@ module Date :
     val to_string : t -> string
 
     (** [parse loc s] parses a date from the string [s], it raises
-        a [Syntax_error _] exception if it fails and uses [loc] as the 
+        a [Syntax_error _] exception if it fails and uses [loc] as the
         location for the error message. *)
     val parse : location -> string -> t
   end
@@ -226,7 +212,7 @@ module Date :
 (** [limit_to_75_bytes sl] returns a string that satisfies the format
     contraints of iCalendar: lines are limited to at most 75 bytes
     (http://tools.ietf.org/html/rfc5545#section-3.1).   Elements of
-    [sl] are comma-separated. Note that no element is backslash escaped.
+    [sl] are comma-separated. Note that no character is backslash escaped.
     See also [ical_format].
 *)
 val limit_to_75_bytes : string list -> string
@@ -245,11 +231,11 @@ val ical_format : string list -> string
 (* To string *)
 (* ******************************************************************** *)
 (** [to_string f ical] returns the string that represents [ical].
-    [ical] shall have any value of type 
+    [ical] shall have any value of type
     [> `Raw of location * string | `Text of location * string list ]
     union the type of any value that the function [f] can convert to string.
     Elements that couldn't be properly converted to a string are converted
-    to the empty string. 
+    to the empty string.
     [f x] shall return [None] when [f] cannot convert [x] to a string,
     and [Some s] when [s] is the string representation for [x]; and it
     would be very wrong to return [Some ""] when the proper value should
@@ -264,3 +250,20 @@ val to_string :
 
 
 (* ******************************************************************** *)
+
+
+(* ********************************************************************* *)
+(* Permission to use, copy, modify, and/or distribute this software
+   for any purpose with or without fee is hereby granted, provided
+   that the above copyright notice and this permission notice appear
+   in all copies.
+
+   THE SOFTWARE IS PROVIDED “AS IS” AND ISC DISCLAIMS ALL WARRANTIES
+   WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+   MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL ISC BE LIABLE FOR
+   ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY
+   DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+   WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
+   ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
+   OF THIS SOFTWARE.                                                     *)
+(* ********************************************************************* *)
