@@ -27,28 +27,26 @@ and key = string
 
 module Ical =
 struct
-type 'a t = 'a element list constraint 'a = [> `Raw of location * string ]
-and 'a element =
-  | Block of location * name * 'a t
-  | Assoc of location * key * 'a constraint 'a = [> `Raw of location * string ]
+  type 'a t = 'a element list
+    constraint 'a = [> `Raw of location * string ]
+  and 'a element =
+    | Block of location * name * 'a t
+    | Assoc of location * key * 'a
+    constraint 'a = [> `Raw of location * string ]
 
-(** A [line] is made of a name and a value. Sometimes, the value of a [line] 
-    in a file is better off being on several lines, in which case the [\n]
-    has to be backslash-escaped. *)
-type line = { (* output of the lexer *)
-  (*  *)
-  name: string;
-  (* *)
-  value: string;
-  (* Locations *)
-  name_start: int * int;
-  value_start: int * int;
-  value_end: int * int;
-}
+  (** A [line] is made of a name and a value. Sometimes, the value of a [line] 
+      in a file is better off being on several lines, in which case the [\n]
+      has to be backslash-escaped. *)
+  type line = { (* output of the lexer *)
+    name: string;
+    value: string;
+    (* Locations *)
+    name_start: int * int;
+    value_start: int * int;
+    value_end: int * int;
+  }
 end
 include Ical
-
-
 
 open Printf
 
@@ -60,41 +58,41 @@ let syntax_assert b s ln cn  = if not b then syntax_error s ln cn
 let text_of_raw (label:string) = function
   | `Raw((ln, cn) as location, s) ->
     let sl = String.length s in
-      let open Buffer in
-      let b = create sl in
-      let rec loop accu i =
-        if i = sl then contents b :: accu else
-          match s.[i] with
-          | _ when false -> assert false
-              
-          (* Escaped char *)
-          | '\\' ->
-              if i+1 = sl then
-                syntax_error "raw data ends with an unescaped backslash" ln cn
-              else
-                begin match s.[i+1] with
-                  | 'N' | 'n' -> add_char b '\n'
-                  | '\\' -> add_char b '\\'
-                  | ';' -> add_char b ';'
-                  | ',' -> add_char b ','
-                  | c -> syntax_error (sprintf "backslash-escaping %c" c) ln cn
-                end;
-              loop accu (i+2)
+    let open Buffer in
+    let b = create sl in
+    let rec loop accu i =
+      if i = sl then contents b :: accu else
+        match s.[i] with
+        | _ when false -> assert false
 
-          (* For multiple text values *)
-          | ',' ->
-              let bc = contents b in
-              clear b;
-              loop (bc :: accu) (i+1)
+        (* Escaped char *)
+        | '\\' ->
+          if i+1 = sl then
+            syntax_error "raw data ends with an unescaped backslash" ln cn
+          else
+            begin match s.[i+1] with
+              | 'N' | 'n' -> add_char b '\n'
+              | '\\' -> add_char b '\\'
+              | ';' -> add_char b ';'
+              | ',' -> add_char b ','
+              | c -> syntax_error (sprintf "backslash-escaping %c" c) ln cn
+            end;
+          loop accu (i+2)
 
-          | ';' -> syntax_error "character ; is not allowed" ln cn
+        (* For multiple text values *)
+        | ',' ->
+          let bc = contents b in
+          clear b;
+          loop (bc :: accu) (i+1)
 
-          (* The risk here is to allow some control characters that
-             shouldn't be allowed. I'm taking a risk by assuming that
-             feeds read by this program do comply with RFC 5545. *)
-          | c -> add_char b c; loop accu (i+1)
-      in
-      label, `Text(location, List.rev (loop [] 0))
+        | ';' -> syntax_error "character ; is not allowed" ln cn
+
+        (* The risk here is to allow some control characters that
+           shouldn't be allowed. I'm taking a risk by assuming that
+           feeds read by this program do comply with RFC 5545. *)
+        | c -> add_char b c; loop accu (i+1)
+    in
+    label, `Text(location, List.rev (loop [] 0))
   | x -> label, x
 
 let lex_ical s =
@@ -126,37 +124,37 @@ let lex_ical s =
             loop lines (i+1) colon (not dquotes) false lc (cc+1)
           end
       | '\n' ->
+        begin
+          syntax_assert (not nl) "unexpected double newline" lc cc;
+          if i >= sl-1 then
+            { name=Buffer.contents name;
+              value=Buffer.contents value;
+              name_start = !name_start;
+              value_start = !value_start;
+              value_end = lc, cc;}
+            ::lines
+          else if s.[i+1] <> ' ' then
+            let nv = {
+              name=Buffer.contents name;
+              value=Buffer.contents value;
+              name_start = !name_start;
+              value_start = !value_start;
+              value_end = lc, cc;
+            }
+            in
+            Buffer.clear name; Buffer.clear value;
+            name_start := (lc+1,0);
+            loop
+              (nv::lines)
+              (i+1) false dquotes true (lc+1) 0
+          else
             begin
-              syntax_assert (not nl) "unexpected double newline" lc cc;
-              if i >= sl-1 then
-                { name=Buffer.contents name;
-                  value=Buffer.contents value;
-                  name_start = !name_start;
-                  value_start = !value_start;
-                  value_end = lc, cc;}
-                ::lines
-              else if s.[i+1] <> ' ' then
-                let nv = {
-                  name=Buffer.contents name;
-                  value=Buffer.contents value;
-                  name_start = !name_start;
-                  value_start = !value_start;
-                  value_end = lc, cc;
-                }
-                in
-                  Buffer.clear name; Buffer.clear value;
-                  name_start := (lc+1,0);
-                  loop
-                    (nv::lines)
-                    (i+1) false dquotes true (lc+1) 0
-              else
-                begin
-                  (* syntax_assert colon "unexpected end of line" lc cc; *)
-                  loop
-                    lines
-                    (i+2) colon dquotes false (lc+1) 0
-                end
+              (* syntax_assert colon "unexpected end of line" lc cc; *)
+              loop
+                lines
+                (i+2) colon dquotes false (lc+1) 0
             end
+        end
       | '\r' -> (* just ignore \r for now *)
         loop lines (i+1) colon dquotes nl lc cc
       | ' ' as c ->
@@ -191,7 +189,7 @@ let lex_ical s =
           end
   in
   List.rev (loop [] 0 false false true 1 0)
-;;
+
 
 let parse_ical l =
   (* ob = opened blocks *)
@@ -430,7 +428,7 @@ let ical_format ls = (* limit lines to 75 bytes *)
   in
   loop 0 0 "" ls;
   Buffer.contents b
-    
+
 
 let to_string ?(f=(fun _ -> None)) t =
   let b = Buffer.create 42 in
@@ -466,7 +464,7 @@ let to_string ?(f=(fun _ -> None)) t =
 module Datetime =
 struct
   (** http://tools.ietf.org/html/rfc2445#section-4.3.5 *)
-  
+
   type 'a timezone = [> `Local | `UTC | `String of string ] as 'a
 
   type 'a t = {
@@ -521,7 +519,7 @@ struct
         timezone
         year month day hours minutes seconds
 
-    let parse (ln, cn : int*int) (s : string) =
+  let parse (ln, cn : int*int) (s : string) =
     let d = "19980130T134500" in
     let l = String.length d in
     let t = String.index d 'T' (* Won't fail. *) in
@@ -577,15 +575,15 @@ struct
         }
       end
 
-    let parse_datetime t =
-      transform
-        (function
-          | Assoc(loc, "DTSTAMP", `Text(dloc, [d])) ->
-            Assoc(loc, "DTSTAMP", `Datetime(parse dloc d))
-          | Assoc(loc, "DTSTAMP", `Raw(dloc, d)) ->
-            Assoc(loc, "DTSTAMP", `Datetime(parse dloc d))
-          | x -> x)
-        t
+  let parse_datetime t =
+    transform
+      (function
+        | Assoc(loc, "DTSTAMP", `Text(dloc, [d])) ->
+          Assoc(loc, "DTSTAMP", `Datetime(parse dloc d))
+        | Assoc(loc, "DTSTAMP", `Raw(dloc, d)) ->
+          Assoc(loc, "DTSTAMP", `Datetime(parse dloc d))
+        | x -> x)
+      t
 end
 
 module Date =
@@ -608,7 +606,7 @@ struct
         | _ -> assert false)
   let to_string { year; month; day } = sprintf "%04d%02d%02d" year month day
 
-let parse (ln, cn : int*int) (s : string) =
+  let parse (ln, cn : int*int) (s : string) =
     let d = "19980130" in
     let l = String.length d in
     if String.length s <> l
