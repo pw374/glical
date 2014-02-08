@@ -1,13 +1,12 @@
 
 
 glical:glical.cma glical_test.ml
-	ocamlc -o $< $+
+	ocamlc -o $@ $+
 
 glical.cma:glical.cmo
 	ocamlc -a $< -o $@
 
-glical.cmo:glical.ml
-	${MAKE} glical.cmi
+glical.cmo:glical.ml glical.cmi
 	ocamlc -c $<
 
 glical.cmi:glical.mli
@@ -25,4 +24,9 @@ glical.cmx:glical.ml
 	${MAKE} glical.cmi
 	ocamlopt -c $<
 
+
+.PHONY:clean
+
+clean:
+	rm -f *.cm[aiox] *.cmxa
 
