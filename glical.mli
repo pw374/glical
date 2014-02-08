@@ -85,22 +85,26 @@ val parse_ical : line list -> [> `Raw of location * string ] Ical.t
 
 (* Data processing *)
 (* ******************************************************************** *)
-(** [tree_map f ical] is a map over [ical], where [f] is applied to
+(** [map f ical] is a map over [ical], where [f] is applied to
     each pair of "key x value". Locations are preserved and cannot be
     changed. *)
-val tree_map :
+val map :
   (
     string -> 
     ([> `Raw of location * string ] as 'a) ->
     (string * ([> `Raw of location * string ] as 'b))
   ) -> 'a Ical.t -> 'b Ical.t
 
-(** [tree_transform] is like [tree_map] except that the function
+(** [transform] is like [map] except that the function
     is applied to the whole [Assoc(_)] node. *)
-val tree_transform :
+val transform :
   (([> `Raw of location * string ] as 'a) Ical.element ->
    ([> `Raw of location * string ] as 'b) Ical.element) ->
   'a Ical.t -> 'b Ical.t
+
+(** [filter ]     *)
+val filter : ('a Ical.element -> bool) -> 'a Ical.t -> 'a Ical.t
+
 (* ******************************************************************** *)
 
 (* Value formats *)
@@ -114,8 +118,8 @@ val tree_transform :
     (http://tools.ietf.org/html/rfc5545#section-3.3.11) *)
 val text_of_raw :
   string ->
-  ([> `Raw of (int * int) * string
-   | `Text of (int * int) * string list ] as 'a)
+  ([> `Raw of location * string
+   | `Text of location * string list ] as 'a)
   -> string * 'a
 
 
@@ -164,11 +168,11 @@ module Datetime :
 
     (** [parse_datetime ical] applies [parse] to each element
         of [ical] that satisfies the following pattern
-        [("DTSTAMP", (`Text [_] | `Raw _))] *)
+        [("DTSTAMP", (`Text _ | `Raw _))] *)
     val parse_datetime :
       ([> `Datetime of [> `Local | `String of string | `UTC ] t
        | `Raw of location * string
-       | `Text of string list ]
+       | `Text of location * string list ]
        as 'a) Ical.t -> 'a Ical.t
   end
 
@@ -200,18 +204,20 @@ module Date :
 
 (* Formatting *)
 (* ******************************************************************** *)
-(** [ical_format s] returns a string that satisfies the format contraints
+(** [ical_format sl] returns a string that satisfies the format contraints
     of iCalendar: lines are limited to at most 75 bytes
     (http://tools.ietf.org/html/rfc5545#section-3.1),
     and some characters are backslash-escaped
-    (http://tools.ietf.org/html/rfc5545#section-3.3.11). *)
-val ical_format : string -> string
+    (http://tools.ietf.org/html/rfc5545#section-3.3.11).
+    Each element of [sl] are separated by a comma.
+*)
+val ical_format : string list -> string
 
 (* To string *)
 (* ******************************************************************** *)
 (** [to_string f ical] returns the string that represents [ical].
     [ical] shall have any value of type 
-    [> `Raw of location * string | `Text of string ]
+    [> `Raw of location * string | `Text of location * string list ]
     union the type of any value that the function [f] can convert to string.
     Elements that couldn't be properly converted to a string are converted
     to the empty string. 
@@ -220,11 +226,11 @@ val ical_format : string -> string
     would be very wrong to return [Some ""] when the proper value should
     be [None].
     Note that [f] can override the default conversion semantics for elements of
-    the type [`Raw of location * string | `Text of string ].
+    the type [`Raw of location * string | `Text of location * string list ].
 *)
 val to_string :
-  (([> ] as 'a) -> string option) ->
-  ([> `Raw of location * string | `Text of string ] as 'a)
+  ?f:(([> ] as 'a) -> string option) ->
+  ([> `Raw of location * string | `Text of location * string list ] as 'a)
     Ical.t -> string
 
 
