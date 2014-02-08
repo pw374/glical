@@ -572,7 +572,7 @@ struct
       end
 
   let parse_datetime t =
-    transform
+    map
       (function
         | Assoc(loc, "DTSTAMP", `Text(dloc, [d])) ->
           Assoc(loc, "DTSTAMP", `Datetime(parse dloc d))
