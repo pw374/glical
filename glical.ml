@@ -233,22 +233,22 @@ let parse_ical l =
 
 (** [map] keeps location and section names, it applies the
     function [f] only to the values. *)
-let rec map f = function
+let rec map_values f = function
   | Block(loc, s, v)::tl ->
-    Block(loc, s, map f v)::map f tl
+    Block(loc, s, map_values f v)::map_values f tl
   | Assoc(loc, s, r)::tl ->
     let new_s, new_r = f s r in
-    Assoc(loc, new_s, new_r)::map f tl
+    Assoc(loc, new_s, new_r)::map_values f tl
   | [] -> []
 
 
-(** [transform] keeps location and section names, it applies the
+(** [map] keeps location and section names, it applies the
     function [f] to all [Assoc(loc, s, r)] elements. *)
-let rec transform f = function
+let rec map f = function
   | Block(loc, s, v)::tl ->
-    Block(loc, s, transform f v)::transform f tl
+    Block(loc, s, map f v)::map f tl
   | (Assoc(loc, s, r) as e)::tl ->
-    f e::transform f tl
+    f e::map f tl
   | [] -> []
 
 let rec filter f = function
@@ -264,9 +264,19 @@ let rec filter f = function
       filter f tl
   | [] -> []
 
+let is_nonempty_block = function
+    | Block(_, _, []) -> false
+    | _ -> true
+
+let is_empty_block = function
+    | Block(_, _, []) -> true
+    | _ -> false
+
 
 
 let limit_to_75_bytes ls = (* limit lines to 75 bytes *)
+  (* Note : Apple Calendar seems to limit to less than 75 bytes, which
+     is also valid but less space-efficient. *)
   let b = Buffer.create 42 in
   let rec loop i l s ls =
     let sl = String.length s in

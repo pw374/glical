@@ -85,25 +85,44 @@ val parse_ical : line list -> [> `Raw of location * string ] Ical.t
 
 (* Data processing *)
 (* ******************************************************************** *)
-(** [map f ical] is a map over [ical], where [f] is applied to
-    each pair of "key x value". Locations are preserved and cannot be
-    changed. *)
-val map :
+(** [map_values f ical] is a map over [ical], where [f] is applied to
+    values only. Locations and keys are preserved. *)
+val map_values :
   (
     string -> 
     ([> `Raw of location * string ] as 'a) ->
     (string * ([> `Raw of location * string ] as 'b))
   ) -> 'a Ical.t -> 'b Ical.t
 
-(** [transform] is like [map] except that the function
-    is applied to the whole [Assoc(_)] node. *)
-val transform :
+(** [map f t] is like [map f t] except that [f] is applied to the
+    whole [Assoc(_)]. Note that [map] is equivalent to [List.map] if
+    and only if there's no block element in [t], indeed the difference
+    is that [map] is recursively called over all elements of all
+    blocks. *)
+val map :
   (([> `Raw of location * string ] as 'a) Ical.element ->
    ([> `Raw of location * string ] as 'b) Ical.element) ->
   'a Ical.t -> 'b Ical.t
 
-(** [filter ]     *)
+(** [filter f t] returns all elements of [t] that satisfy the
+    predicate [f]. Your function should return [true] for elements
+    matching [Block _] if you want the elements of the block to be
+    filtered, otherwise the entire block will be discarded.
+    If you want to make sure that you don't end up with empty
+    blocks, you should apply [filter] twice (the second time to
+    remove empty blocks). *)
 val filter : ('a Ical.element -> bool) -> 'a Ical.t -> 'a Ical.t
+
+
+(** [is_empty_block t] returns [true] if [t] is an empty block,
+    false otherwise. *)
+val is_empty_block : 'a Ical.element -> bool
+
+(** [is_nonempty_block t] returns [true] if [t] isn't an empty block,
+    false otherwise. *)
+val is_nonempty_block : 'a Ical.element -> bool
+
+
 
 (* ******************************************************************** *)
 
@@ -204,12 +223,22 @@ module Date :
 
 (* Formatting *)
 (* ******************************************************************** *)
-(** [ical_format sl] returns a string that satisfies the format contraints
-    of iCalendar: lines are limited to at most 75 bytes
-    (http://tools.ietf.org/html/rfc5545#section-3.1),
-    and some characters are backslash-escaped
-    (http://tools.ietf.org/html/rfc5545#section-3.3.11).
-    Each element of [sl] are separated by a comma.
+(** [limit_to_75_bytes sl] returns a string that satisfies the format
+    contraints of iCalendar: lines are limited to at most 75 bytes
+    (http://tools.ietf.org/html/rfc5545#section-3.1).   Elements of
+    [sl] are comma-separated. Note that no element is backslash escaped.
+    See also [ical_format].
+*)
+val limit_to_75_bytes : string list -> string
+
+
+(** [ical_format sl] returns a string that satisfies the format
+    contraints of iCalendar: lines are limited to at most 75 bytes
+    (http://tools.ietf.org/html/rfc5545#section-3.1), and some
+    characters are backslash-escaped
+    (http://tools.ietf.org/html/rfc5545#section-3.3.11).  Elements of
+    [sl] are comma-separated.
+    See also [limit_to_75_bytes].
 *)
 val ical_format : string list -> string
 
