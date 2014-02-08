@@ -104,7 +104,7 @@ let lex_ical s =
   and value_start = ref (0,0)
   in
   let sl = String.length s in
-  let rec loop lines i (colon:bool) (nl:bool) (lc:int) (cc:int) =
+  let rec loop lines i (colon:bool) (dquotes:bool) (nl:bool) (lc:int) (cc:int) =
     if i >= sl then
       { name=Buffer.contents name;
         value=Buffer.contents value;
@@ -114,6 +114,17 @@ let lex_ical s =
       ::lines
     else
       match s.[i] with
+      | '"' as c ->
+        if colon then
+          begin
+            Buffer.add_char value c;
+            loop lines (i+1) colon (not dquotes) false lc (cc+1)
+          end
+        else
+          begin
+            Buffer.add_char name c;
+            loop lines (i+1) colon (not dquotes) false lc (cc+1)
+          end
       | '\n' ->
             begin
               syntax_assert (not nl) "unexpected double newline" lc cc;
@@ -137,45 +148,49 @@ let lex_ical s =
                   name_start := (lc+1,0);
                   loop
                     (nv::lines)
-                    (i+1) false true (lc+1) 0
+                    (i+1) false dquotes true (lc+1) 0
               else
                 begin
-                  syntax_assert colon "unexpected end of line" lc cc;
+                  (* syntax_assert colon "unexpected end of line" lc cc; *)
                   loop
                     lines
-                    (i+2) colon false (lc+1) 0
+                    (i+2) colon dquotes false (lc+1) 0
                 end
             end
       | '\r' -> (* just ignore \r for now *)
-        loop lines (i+1) colon nl lc cc
+        loop lines (i+1) colon dquotes nl lc cc
       | ' ' as c ->
-        syntax_assert colon "unexpected space before colon" lc cc;
-        Buffer.add_char value c;
-        loop lines (i+1) colon false lc (cc+1)
+        if colon then
+          Buffer.add_char value c
+        else if dquotes then
+          Buffer.add_char name c
+        else
+          syntax_error "unexpected space before colon" lc cc;
+        loop lines (i+1) colon dquotes false lc (cc+1)
       | ':' as c ->
         if colon then
           begin
             Buffer.add_char value c;
-            loop lines (i+1) true false lc (cc+1)
+            loop lines (i+1) true dquotes false lc (cc+1)
           end
         else
           begin
             value_start := (lc,cc);
-            loop lines (i+1) true false lc (cc+1)
+            loop lines (i+1) true dquotes false lc (cc+1)
           end
       | c ->
         if colon then
           begin
             Buffer.add_char value c;
-            loop lines (i+1) colon false lc (cc+1)
+            loop lines (i+1) colon dquotes false lc (cc+1)
           end
         else
           begin
             Buffer.add_char name c;
-            loop lines (i+1) colon false lc (cc+1)
+            loop lines (i+1) colon dquotes false lc (cc+1)
           end
   in
-  List.rev (loop [] 0 false true 1 0)
+  List.rev (loop [] 0 false false true 1 0)
 ;;
 
 let parse_ical l =
@@ -218,131 +233,228 @@ let parse_ical l =
       (fst v.name_start) (snd v.name_start)
 
 
-(** [tree_map] keeps location and section names, it applies the
+(** [map] keeps location and section names, it applies the
     function [f] only to the values. *)
-let rec tree_map f = function
+let rec map f = function
   | Block(loc, s, v)::tl ->
-    Block(loc, s, tree_map f v)::tree_map f tl
+    Block(loc, s, map f v)::map f tl
   | Assoc(loc, s, r)::tl ->
     let new_s, new_r = f s r in
-    Assoc(loc, new_s, new_r)::tree_map f tl
+    Assoc(loc, new_s, new_r)::map f tl
   | [] -> []
 
 
-(** [tree_transform] keeps location and section names, it applies the
+(** [transform] keeps location and section names, it applies the
     function [f] to all [Assoc(loc, s, r)] elements. *)
-let rec tree_transform f = function
+let rec transform f = function
   | Block(loc, s, v)::tl ->
-    Block(loc, s, tree_transform f v)::tree_transform f tl
+    Block(loc, s, transform f v)::transform f tl
   | (Assoc(loc, s, r) as e)::tl ->
-    f e::tree_transform f tl
+    f e::transform f tl
+  | [] -> []
+
+let rec filter f = function
+  | (Block(loc, s, v) as e)::tl ->
+    if f e then
+      Block(loc, s, filter f v)::filter f tl
+    else
+      filter f tl
+  | (Assoc(loc, s, r) as e)::tl ->
+    if f e then
+      e::filter f tl
+    else
+      filter f tl
   | [] -> []
 
 
 
+let limit_to_75_bytes ls = (* limit lines to 75 bytes *)
+  let b = Buffer.create 42 in
+  let rec loop i l s ls =
+    let sl = String.length s in
+    if i = sl then
+      match ls with
+      | [] -> ()
+      | s :: tl ->
+        if Buffer.length b <> 0 then
+          (Buffer.add_char b ',';
+           loop 0 (l+1) s tl)
+        else
+          loop 0 l s tl
+    else match s.[i] with
+      | c when (int_of_char c land 0b1110_0000 = 0b1100_0000) ->
+        if l > 73 then
+          (Buffer.add_string b "\r\n ";
+           loop i 1 s ls)
+        else
+          (Buffer.add_char b c;
+           loop (i+1) (l+1) s ls)
+      | c when (int_of_char c land 0b1111_0000 = 0b1110_0000) ->
+        if l > 72 then
+          (Buffer.add_string b "\r\n ";
+           loop i 1 s ls)
+        else
+          (Buffer.add_char b c;
+           loop (i+1) (l+1) s ls)
+      | c when (int_of_char c land 0b1111_1000 = 0b1111_0000) ->
+        if l > 71 then
+          (Buffer.add_string b "\r\n ";
+           loop i 1 s ls)
+        else
+          (Buffer.add_char b c;
+           loop (i+1) (l+1) s ls)
+      | c when (int_of_char c land 0b1111_1100 = 0b1111_1000) ->
+        if l > 70 then
+          (Buffer.add_string b "\r\n ";
+           loop i 1 s ls)
+        else
+          (Buffer.add_char b c;
+           loop (i+1) (l+1) s ls)
+      | c when (int_of_char c land 0b1111_1110 = 0b1111_1100) ->
+        if l > 69 then
+          (Buffer.add_string b "\r\n ";
+           loop i 1 s ls)
+        else
+          (Buffer.add_char b c;
+           loop (i+1) (l+1) s ls)
+      | c when (int_of_char c land 0b1111_1111 = 0b1111_1110) ->
+        if l > 68 then
+          (Buffer.add_string b "\r\n ";
+           loop i 1 s ls)
+        else
+          (Buffer.add_char b c;
+           loop (i+1) (l+1) s ls)
+      | c ->
+        if l > 74 then
+          (Buffer.add_string b "\r\n ";
+           loop i 1 s ls)
+        else
+          (Buffer.add_char b c;
+           loop (i+1) (l+1) s ls)
+  in
+  loop 0 0 "" ls;
+  Buffer.contents b
 
-let ical_format s = (* limit lines to 75 bytes *)
-  let b = Buffer.create (2 * String.length s) in
-  let sl = String.length s in
-  let rec loop i l =
-    if i = sl then ()
+
+let ical_format ls = (* limit lines to 75 bytes *)
+  let b = Buffer.create 42 in
+  let rec loop i l s ls =
+    let sl = String.length s in
+    if i = sl then
+      match ls with
+      | [] -> ()
+      | s :: tl ->
+        if Buffer.length b <> 0 then
+          (Buffer.add_char b ',';
+           loop 0 (l+1) s tl)
+        else
+          loop 0 l s tl
     else match s.[i] with
       | '\n' ->
         if l > 73 then
           (Buffer.add_string b "\r\n ";
-           loop i 1)
+           loop i 1 s ls)
         else
-          Buffer.add_string b "\\n"
+          (Buffer.add_string b "\\n";
+           loop (i+1) (l+2) s ls)
       | '\\' ->
         if l > 73 then
           (Buffer.add_string b "\r\n ";
-           loop i 1)
+           loop i 1 s ls)
         else
-          Buffer.add_string b "\\\\"
+          (Buffer.add_string b "\\\\";
+           loop (i+1) (l+2) s ls)
       | ';' ->
         if l > 73 then
           (Buffer.add_string b "\r\n ";
-           loop i 1)
+           loop i 1 s ls)
         else
-          Buffer.add_string b "\\;"
+          (Buffer.add_string b "\\;";
+           loop (i+1) (l+2) s ls)
       | ',' ->
         if l > 73 then
           (Buffer.add_string b "\r\n ";
-           loop i 1)
+           loop i 1 s ls)
         else
-          Buffer.add_string b "\\,"
+          (Buffer.add_string b "\\,";
+           loop (i+1) (l+2) s ls)
       | c when (int_of_char c land 0b1110_0000 = 0b1100_0000) ->
         if l > 73 then
           (Buffer.add_string b "\r\n ";
-           loop i 1)
+           loop i 1 s ls)
         else
           (Buffer.add_char b c;
-           loop (i+1) (l+1))
+           loop (i+1) (l+1) s ls)
       | c when (int_of_char c land 0b1111_0000 = 0b1110_0000) ->
         if l > 72 then
           (Buffer.add_string b "\r\n ";
-           loop i 1)
+           loop i 1 s ls)
         else
           (Buffer.add_char b c;
-           loop (i+1) (l+1))
+           loop (i+1) (l+1) s ls)
       | c when (int_of_char c land 0b1111_1000 = 0b1111_0000) ->
         if l > 71 then
           (Buffer.add_string b "\r\n ";
-           loop i 1)
+           loop i 1 s ls)
         else
           (Buffer.add_char b c;
-           loop (i+1) (l+1))
+           loop (i+1) (l+1) s ls)
       | c when (int_of_char c land 0b1111_1100 = 0b1111_1000) ->
         if l > 70 then
           (Buffer.add_string b "\r\n ";
-           loop i 1)
+           loop i 1 s ls)
         else
           (Buffer.add_char b c;
-           loop (i+1) (l+1))
+           loop (i+1) (l+1) s ls)
       | c when (int_of_char c land 0b1111_1110 = 0b1111_1100) ->
         if l > 69 then
           (Buffer.add_string b "\r\n ";
-           loop i 1)
+           loop i 1 s ls)
         else
           (Buffer.add_char b c;
-           loop (i+1) (l+1))
+           loop (i+1) (l+1) s ls)
       | c when (int_of_char c land 0b1111_1111 = 0b1111_1110) ->
         if l > 68 then
           (Buffer.add_string b "\r\n ";
-           loop i 1)
+           loop i 1 s ls)
         else
           (Buffer.add_char b c;
-           loop (i+1) (l+1))
+           loop (i+1) (l+1) s ls)
       | c ->
         if l > 74 then
           (Buffer.add_string b "\r\n ";
-           loop i 1)
+           loop i 1 s ls)
         else
           (Buffer.add_char b c;
-           loop (i+1) (l+1))
+           loop (i+1) (l+1) s ls)
   in
-  loop 0 0;
+  loop 0 0 "" ls;
   Buffer.contents b
+    
 
-
-let to_string f t =
+let to_string ?(f=(fun _ -> None)) t =
   let b = Buffer.create 42 in
   let rec loop = function
     | [] -> ()
     | Block(_, s, v)::tl ->
-      bprintf b "BEGIN:%s\n" s;
+      bprintf b "BEGIN:%s\r\n" s;
       loop v;
-      bprintf b "END:%s\n" s;
+      bprintf b "END:%s\r\n" s;
       loop tl
     | Assoc(_, s, r)::tl ->
       Buffer.add_string b
         (match f r with
-         | Some x -> ical_format (s ^ ":" ^ x)
+         | Some x -> ical_format [s ^ ":" ^ x]
          | None ->
            match r with
-           | `Text x -> ical_format (s ^ ":" ^ x)
-           | `Raw(loc, x) -> s ^ ":" ^ x
+           | `Text(loc, x::tl) ->
+             ical_format ((s ^ ":" ^ x) :: tl)
+           | `Text(loc, []) ->
+             ical_format [s ^ ":"]
+           | `Raw(loc, x) ->
+             limit_to_75_bytes [s ^ ":" ^ x]
            | _ -> "");
+      Buffer.add_string b "\r\n";
       loop tl
   in
   loop t;
@@ -466,10 +578,10 @@ struct
       end
 
     let parse_datetime t =
-      tree_transform
+      transform
         (function
-          | Assoc(loc, "DTSTAMP", `Text [d]) ->
-            Assoc(loc, "DTSTAMP", `Datetime(parse loc d))
+          | Assoc(loc, "DTSTAMP", `Text(dloc, [d])) ->
+            Assoc(loc, "DTSTAMP", `Datetime(parse dloc d))
           | Assoc(loc, "DTSTAMP", `Raw(dloc, d)) ->
             Assoc(loc, "DTSTAMP", `Datetime(parse dloc d))
           | x -> x)
@@ -576,9 +688,9 @@ end
 (* let () = () ;; *)
 
 
-(* let _ = tree_map text_of_raw _y2;; *)
+(* let _ = map text_of_raw _y2;; *)
 
-(* let _ = tree_transform text_of_raw _y2;; *)
+(* let _ = transform text_of_raw _y2;; *)
 
 (* let _ =  *)
 (*   Datetime.parse_datetime _y2 *)
