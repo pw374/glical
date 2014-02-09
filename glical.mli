@@ -100,6 +100,15 @@ val map :
 val filter : ('a Ical.element -> bool) -> 'a Ical.t -> 'a Ical.t
 
 
+(** [fold_on_assocs f accu ical] returns [f a k v] applied to all
+    pairs of (key*value) of [ical] where [a] is the accumulator.
+    The first [k] and [v] given to [f] are the first pair
+    of (key*value) met when browsing [ical]. It's similar to
+    [List.fold_left]. *)
+val fold_on_assocs :
+  ('accu -> key -> 'value -> 'accu) -> 'accu -> 'value Ical.t -> 'accu
+
+
 (** [is_empty_block t] returns [true] if [t] is an empty block,
     false otherwise. *)
 val is_empty_block : 'a Ical.element -> bool

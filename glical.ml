@@ -250,6 +250,11 @@ let rec filter f = function
       filter f tl
   | [] -> []
 
+let rec fold_on_assocs f accu = function
+  | Block(_, _, v)::tl -> fold_on_assocs f (fold_on_assocs f accu v) tl
+  | Assoc(_, k, v)::tl -> fold_on_assocs f (f accu k v) tl
+  | [] -> accu
+
 let is_nonempty_block = function
     | Block(_, _, []) -> false
     | _ -> true
