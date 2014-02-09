@@ -237,6 +237,19 @@ let rec map f = function
     f e::map f tl
   | [] -> []
 
+
+(** [iter f ical] applies the function [f] to all [Assoc(loc, s, r)] elements
+    of [ical]. *)
+let rec iter f = function
+  | Block(loc, s, v)::tl ->
+    iter f v;
+    iter f tl
+  | (Assoc(loc, s, r) as e)::tl ->
+    f e;
+    iter f tl
+  | [] -> ()
+
+
 let rec filter f = function
   | (Block(loc, s, v) as e)::tl ->
     if f e then

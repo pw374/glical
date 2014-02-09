@@ -90,6 +90,13 @@ val map :
    ([> `Raw of location * string ] as 'b) Ical.element) ->
   'a Ical.t -> 'b Ical.t
 
+
+(** [iter f ical] applies the function [f] to all [Assoc(loc, s, r)] elements
+    of [ical]. *)
+val iter :
+  (([> `Raw of location * string ] as 'a) Ical.element -> unit) ->
+  'a Ical.t -> unit
+
 (** [filter f t] returns all elements of [t] that satisfy the
     predicate [f]. Your function should return [true] for elements
     matching [Block _] if you want the elements of the block to be
