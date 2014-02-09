@@ -32,6 +32,9 @@ Scheduling    Core    Object   Specification    (iCalendar)*,    1998,
 \[3]: OCaml 4.01, <http://caml.inria.fr/pub/distrib/ocaml-4.01/>
 <http://caml.inria.fr/pub/distrib/ocaml-4.01/notes/Changes>
 
+
+Please see PLAY.md for instructions. 
+
 Distribution
 ------------
 
