@@ -48,7 +48,9 @@ val syntax_assert : bool -> string -> int -> int -> unit
 
 (* Lexing *)
 (* ******************************************************************** *)
-(** Type to represent a line. *)
+(** A [line] is made of a name and a value. Sometimes, the value of a [line]
+    in a file is better off being on several lines, in which case the [\n]
+    has to be backslash-escaped. *)
 type line = {
   name : string;
   value : string;
@@ -96,6 +98,9 @@ val map :
 val iter :
   (([> `Raw of location * string ] as 'a) Ical.element -> unit) ->
   'a Ical.t -> unit
+
+val sort : (([> `Raw of location * string ] as 'a) Ical.element -> 'a Ical.element -> int) ->
+  'a Ical.t -> 'a Ical.t
 
 (** [filter f t] returns all elements of [t] that satisfy the
     predicate [f]. Your function should return [true] for elements

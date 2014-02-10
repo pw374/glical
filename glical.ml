@@ -11,6 +11,17 @@ type location = int * int
 and name = string
 and key = string
 
+
+type line = { (* output of the lexer *)
+  name: string;
+  value: string;
+  (* Locations *)
+  name_start: int * int;
+  value_start: int * int;
+  value_end: int * int;
+}
+
+
 module Ical =
 struct
   type 'a t = 'a element list
@@ -19,20 +30,8 @@ struct
     | Block of location * name * 'a t
     | Assoc of location * key * 'a
     constraint 'a = [> `Raw of location * string ]
-
-  (** A [line] is made of a name and a value. Sometimes, the value of a [line]
-      in a file is better off being on several lines, in which case the [\n]
-      has to be backslash-escaped. *)
-  type line = { (* output of the lexer *)
-    name: string;
-    value: string;
-    (* Locations *)
-    name_start: int * int;
-    value_start: int * int;
-    value_end: int * int;
-  }
 end
-include Ical
+open Ical
 
 open Printf
 
@@ -249,6 +248,13 @@ let rec iter f = function
     iter f tl
   | [] -> ()
 
+
+let rec sort compare = function
+  | Block(loc, s, v)::tl ->
+    List.sort compare (Block(loc, s, sort compare v)::(sort compare tl))
+  | (Assoc(loc, s, r) as e)::tl ->
+    List.sort compare (e::sort compare tl)
+  | [] -> []
 
 let rec filter f = function
   | (Block(loc, s, v) as e)::tl ->
