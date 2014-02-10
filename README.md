@@ -17,10 +17,16 @@ been developed  with the  idea that  very few  properties of  the iCal
 format are sufficient  for most people to transform some  iCal data or
 extract the information that they want from it.
 
-This library is implemented in pure  OCaml. This means that any direct
-user of  this library should not  have to worry about  any dependency.
-This library requires  some features introduced in  OCaml 4.01.0 \[3],
-so it will not compile with previous versions of the OCaml compiler.
+The core of  this library is implemented in pure  OCaml, with no other
+package dependencies nor external dependencies.  This library requires
+some features introduced in OCaml 4.01.0  \[3], so it will not compile
+with previous versions of the OCaml compiler.
+
+An extension of this library is also provided. It may depend on other
+packages, depending on how it evolves.
+
+A  command-line tool  is being  designed  and developed, based  on the
+previously mentioned library extension.
 
 
 \[1]: The OCaml community web site: <http://ocaml.org>
