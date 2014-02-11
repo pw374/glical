@@ -4,12 +4,17 @@
 # Licence: ISC
 ###########################################################################
 
-glical:glical.cma glical_tool.ml
+glical:glical.cma glical_tool.cmo glical_bin.cmo
 	ocamlc -o $@ $+
 
 glical_cat:glical.cma glical_test.ml
 	ocamlc -o $@ $+
 
+%.cmi:%.mli
+	ocamlc -c $<
+
+%.cmo:%.ml %.cmi
+	ocamlc -c $<
 
 glical.cma:glical.cmo
 	ocamlc -a $< -o $@
@@ -19,8 +24,6 @@ glical.cmo:glical.ml glical.cmi
 
 glical.cmi:glical.mli
 	ocamlc -c $<
-
-
 
 glical.opt:glical.cma glical_test.ml
 	ocamlopt -o $< $+
