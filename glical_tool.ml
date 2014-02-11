@@ -21,7 +21,7 @@ let channel_contents ic =
   end;
   Buffer.contents b
 
-let simple_cat ic =
+let simple_cat ic oc =
   let s = channel_contents ic in
   let l = lex_ical s in
   let p : 'a Ical.t = parse_ical l in
@@ -32,7 +32,7 @@ let simple_cat ic =
           | (`Text _ | `Raw _) -> None
           | `Datetime d -> Some(Datetime.to_string d) 
         ) d in
-  printf "%s%!" o
+  fprintf oc "%s%!" o
 
 let extract_assocs ?(kl=[]) ?(ks=SSet.empty) ical : 'a t =
   let i =
