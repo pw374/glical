@@ -7,18 +7,8 @@
 
 open Glical
 
-let channel_contents ic =
-  let b = Buffer.create 42 in
-  begin
-    try
-      while true do
-        Buffer.add_char b (input_char ic) 
-      done with End_of_file -> ()
-  end;
-  Buffer.contents b
-
 let _ =
-  let s = channel_contents stdin in
+  let s = Glical_tool.channel_contents stdin stdout in
   let l = lex_ical s in
   let p : 'a Ical.t = parse_ical l in
   let d = Datetime.parse_datetime p in
