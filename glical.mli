@@ -5,9 +5,9 @@
 (* Licence: ISC                                                          *)
 (* ********************************************************************* *)
 
-open Glical_kernel
+include module type of Glical_kernel
 
-(** Set.Make(String) *)
+(** SSet = Set.Make(String) *)
 module SSet :
   sig
     type elt = String.t

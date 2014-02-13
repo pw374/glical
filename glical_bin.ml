@@ -5,20 +5,25 @@
 (* Licence: ISC                                                          *)
 (* ********************************************************************* *)
 
-open Glical
 
-let _ =
-  let s = Glical.channel_contents stdin stdout in
-  let l = lex_ical s in
-  let p : 'a Ical.t = parse_ical l in
-  let d = Datetime.parse_datetime p in
-  let o =
-    to_string
-      ~f:(function
-          | (`Text _ | `Raw _) -> None
-          | `Datetime d -> Some(Datetime.to_string d) 
-        ) d in
-  Printf.printf "%s%!" o
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 (* ********************************************************************* *)
 (* Permission to use, copy, modify, and/or distribute this software

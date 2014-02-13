@@ -28,14 +28,13 @@ glical.cmo:glical.ml glical_kernel.cmo glical.cmi
 glical.cmi:glical.mli glical_kernel.cmi
 	ocamlc -c $<
 
-glical.opt:glical_kernel.cmx glical.cmx glical_test.ml
+glical.opt:glical.cmxa glical_test.ml
 	ocamlopt -o $< $+
 
 glical.cmxa:glical.cmx
 	ocamlopt -a $< -o $@
 
-glical.cmx:glical.ml
-	${MAKE} glical.cmi
+glical.cmx:glical.ml glical.cmi
 	ocamlopt -c $<
 
 
