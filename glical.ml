@@ -93,8 +93,7 @@ let combine ical1 ical2 : 'a t =
   | _ -> ical1 @ ical2
 
 
-
-
+(* let combine_vevents ... *)
 
 
 
