@@ -5,13 +5,54 @@
 (* Licence: ISC                                                          *)
 (* ********************************************************************* *)
 
+open Printf
+open Glical
+open Ical
 
+let ical = ref true
+let inputs = ref []
+let template = ref None
+let out = ref stdout
 
+let assert_ a m =
+  if not a then
+    begin
+      eprintf "Error: %s\n%!" m;
+      exit 1
+    end
 
+let wrap f x =
+  try f x
+  with e ->
+    assert_ false (Printexc.to_string e);
+    assert false
 
+let () =
+  Arg.(
+    parse
+    [
+      ("-input",
+       String(wrap(fun s -> inputs := open_in_bin s :: !inputs)),
+       "f use/add f as an input");
+      ("-ical",
+       Set(ical),
+       " output in iCalendar format");
+      ("-tpl",
+       String(wrap(fun s -> template := Some(open_in_bin s))),
+       "t output according to the template t");
+      ("-o",
+       String(wrap(fun s -> out := open_out_bin s)),
+       "f use file f as output (default is stdout)");
+    ]
+    (wrap(fun s -> inputs := open_in_bin s :: !inputs))
+    "glical takes some iCalendar data and allows you to play a little with it"
+  )
 
-
-
+let _ =
+  if !template <> None then
+    assert_ (!ical = false) "You can't have both -ical and -tpl";
+  if !inputs = [] then
+    inputs := [stdin];
 
 
 
