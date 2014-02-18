@@ -47,35 +47,54 @@ val channel_contents : in_channel -> string
     it on [oc]. Note that this fails if there are syntax errors. *)
 val simple_cat : in_channel -> out_channel -> unit
 
-(**  *)
+(** [extract_assocs ?kl ?ks ?k ical] returns the iCalendar values that
+    are associated with the keys specified in [kl], [ks] and/or [k].
+    Empty blocks are not kept. *)
 val extract_assocs :
   ?kl:key list ->
   ?ks:SSet.t ->
+  ?k:string ->
   ([> `Raw of location * string ] as 'a) Ical.t ->
   'a Ical.t
 
-(**  *)
+(** [extract_values ?kl ?ks ?k ical] is like [extract_assocs ?kl ?ks
+    ?k ical] except that it returns a list of values instead. *)
 val extract_values :
   ?kl:key list ->
   ?ks:SSet.t ->
-  ([> `Raw of location * string ] as 'a) Ical.t -> 'a list
+  ?k:string ->
+  ([> `Raw of location * string ] as 'a) Ical.t ->
+  'a list
 
-(**  *)
+(** [list_keys_rev ical] is like [list_keys ical] except that the 
+    result is reversed and performs faster. *)
 val list_keys_rev :
   [> `Raw of location * string ] Ical.t -> string list
 
-(**  *)
+(** [list_keys ical] returns the list of keys from [ical].
+    Each key only appears once. *)
 val list_keys :
   [> `Raw of location * string ] Ical.t -> string list
 
-(**  *)
+(** [list_keys_ordered ?compare ical] is like [list_keys ical] except
+    that the result is ordered according to [String.compare] unless
+    [~compare] is specified. *)
 val list_keys_ordered :
+  ?compare:(string -> string -> int) ->
   [> `Raw of location * string ] Ical.t -> string list
 
-(**  *)
+(** [combine ical1 ical2] returns the combination of 
+    the two iCalendars [ical1] and [ical2]. *)
 val combine :
   ([> `Raw of location * string ] as 'a) Ical.t ->
   'a Ical.t -> 'a Ical.t
+
+
+(** [combine_many icals] returns the combination of 
+    the all iCalendars of [icals]. *)
+val combine_many :
+  ([> `Raw of location * string ] as 'a) Ical.t list ->
+  'a Ical.t
 
 
 
