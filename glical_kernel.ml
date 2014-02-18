@@ -598,10 +598,10 @@ struct
   let parse_datetime t =
     map
       (function
-        | Assoc(loc, "DTSTAMP", `Text(dloc, [d])) ->
-          Assoc(loc, "DTSTAMP", `Datetime(parse dloc d))
-        | Assoc(loc, "DTSTAMP", `Raw(dloc, d)) ->
-          Assoc(loc, "DTSTAMP", `Datetime(parse dloc d))
+        | Assoc(loc, ("DTSTAMP"|"DTSTART"|"DTEND" as l), `Text(dloc, [d])) ->
+          Assoc(loc, l, `Datetime(parse dloc d))
+        | Assoc(loc, ("DTSTAMP"|"DTSTART"|"DTEND" as l), `Raw(dloc, d)) ->
+          Assoc(loc, l, `Datetime(parse dloc d))
         | x -> x)
       t
 end
