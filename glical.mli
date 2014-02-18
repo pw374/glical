@@ -96,7 +96,25 @@ val combine_many :
   ([> `Raw of location * string ] as 'a) Ical.t list ->
   'a Ical.t
 
-
+(** [to_socaml f ical] returns the OCaml program that represents [ical].
+    [ical] shall have any value of type
+    [> `Raw of location * string | `Text of location * string list ]
+    union the type of any value that the function [f] can convert to string.
+    Elements that couldn't be properly converted to a string are converted
+    to the empty string.
+    [f x] shall return [None] when [f] cannot convert [x] to a string,
+    and [Some s] when [s] is the string representation for [x]; and it
+    would be very wrong to return [Some ""] when the proper value should
+    be [None].
+    Note that [f] can override the default conversion semantics for elements of
+    the type [`Raw of location * string | `Text of location * string list ].
+*)
+val to_socaml :
+  ?f:(([> ] as 'a) -> string option) ->
+  ([> `Raw of location * string | `Text of location * string list
+   |  `Datetime of
+        [ `Local | `String of string | `UTC ] Datetime.t ] as 'a)
+    Ical.t -> string
 
 
 (* ********************************************************************* *)
