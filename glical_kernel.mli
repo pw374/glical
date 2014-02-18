@@ -157,13 +157,13 @@ val text_of_raw :
 module Datetime :
   sig
     type 'a t = {
-      timezone : 'a timezone;
       year : int;
       month : int;
       day : int;
       hours : int;
       minutes : int;
       seconds : int;
+      timezone : 'a timezone;
     } constraint 'a = [> `Local | `String of string | `UTC ]
     and 'a timezone = 'a
       constraint 'a = [> `Local | `String of string | `UTC ]

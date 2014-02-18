@@ -488,13 +488,13 @@ struct
   type 'a timezone = [> `Local | `UTC | `String of string ] as 'a
 
   type 'a t = {
-    timezone : 'a timezone;
     year     : int;
     month    : int;
     day      : int;
     hours    : int;
     minutes  : int;
     seconds  : int;
+    timezone : 'a timezone;
   }
 
   (** Allows the time to be equal to 23:59:60 on any day because
