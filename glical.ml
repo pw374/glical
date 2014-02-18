@@ -34,6 +34,47 @@ let simple_cat ic oc =
         ) d in
   fprintf oc "%s%!" o
 
+
+let to_socaml ?(f=(fun _ -> None)) t =
+  let b = Buffer.create 42 in
+  let (!!) s =
+    let s = String.copy s in
+    for i = 0 to String.length s - 1 do
+      match s.[i] with
+      | 'a' .. 'z' | '0' .. '9' | '_' -> ()
+      | _ -> s.[i] <- '_'        
+    done;
+    s
+  in
+  let rec loop = function
+    | [] -> ()
+    | Block(_, s, v)::tl ->
+      bprintf b "module M_%s = struct\n" !!s;
+      loop v;
+      bprintf b "end (*M_%s*)\n" !!s;
+      loop tl
+    | Assoc(_, s, r)::tl ->
+      (match f r with
+         | Some x ->
+           bprintf b "let v_%s = %S\n" !!s x 
+         | None ->
+           match r with
+           | `Text(loc, xtl) ->
+             bprintf b "let v_%s = [%S]\n" !!s
+               (List.fold_left
+                  (fun r e -> r ^ sprintf "; %S" e)
+                  ""
+                  xtl)
+           | `Raw(loc, x) ->
+             bprintf b "let v_%s = %S\n" !!s x
+           | _ -> ());
+      Buffer.add_string b "\n";
+      loop tl
+  in
+  loop t;
+  Buffer.contents b
+
+
 let extract_assocs ?(kl=[]) ?(ks=SSet.empty) ?k ical : 'a t =
   (* [block] is necessary for performance issues, otherwise
      calling [extract_assocs] would have been sufficient. *)
