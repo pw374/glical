@@ -79,8 +79,31 @@ let _ =
 let _ =
   if !template <> None then
     assert_ false "Not yet implemented.";
-
-  List.iter (fun input -> simple_cat input !out) !inputs;
+  let data =
+    let b = Buffer.create 42 in
+    List.iter (fun i -> Buffer.add_string b (channel_contents i)) !inputs;
+    parse_ical(lex_ical(Buffer.contents b))
+  in
+  if !socaml then
+    fprintf
+      !out
+      "%s"
+      (to_socaml
+         ~f:(function
+             | (`Text _ | `Raw _) -> None
+             | `Datetime d -> Some(Datetime.to_string d)
+           )
+         data)
+  else
+    fprintf
+      !out
+      "%s"
+      (to_string
+         ~f:(function
+             | (`Text _ | `Raw _) -> None
+             | `Datetime d -> Some(Datetime.to_string d) 
+           )
+         data)
 
 
 
