@@ -13,6 +13,14 @@ let ical = ref true
 let inputs = ref []
 let template = ref None
 let out = ref stdout
+let socaml = ref false
+let filters =
+  object
+    val mutable s = SSet.empty
+    method add x = s <- SSet.add x s
+    method mem x = SSet.mem x s
+    method is_empty = s = SSet.empty
+  end
 
 let assert_ a m =
   if not a then
@@ -43,6 +51,12 @@ let () =
       ("-o",
        String(wrap(fun s -> out := open_out_bin s)),
        "f use file f as output (default is stdout)");
+      ("-s",
+       Unit(fun () -> socaml := true; ical := false),
+       " output an OCaml programming environment");
+      ("-f",
+       String(filters#add),
+       " specify a label that should be kept");
     ]
     (wrap(fun s -> inputs := open_in_bin s :: !inputs))
     "glical takes some iCalendar data and allows you to play a little with it"
@@ -50,10 +64,23 @@ let () =
 
 let _ =
   if !template <> None then
-    assert_ (!ical = false) "You can't have both -ical and -tpl";
+    assert_ (!ical = false && !socaml = false)
+      "You can only have one of -ical, -tpl and -s";
+  if !socaml then
+    assert_ (!ical = false)
+      "You can only have one of -ical, -tpl and -s";
+  if !ical then
+    assert_ (!socaml = false)
+      "You can only have one of -ical, -tpl and -s";
   if !inputs = [] then
     inputs := [stdin];
+  ()
 
+let _ =
+  if !template <> None then
+    assert_ false "Not yet implemented.";
+
+  List.iter (fun input -> simple_cat input !out) !inputs;
 
 
 
