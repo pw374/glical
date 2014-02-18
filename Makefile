@@ -19,8 +19,8 @@ glical_cat:glical.cma glical_test.ml
 %.cmo:%.ml %.cmi
 	ocamlc -c $<
 
-glical.cma:glical.cmo
-	ocamlc -a $< -o $@
+glical.cma:glical_kernel.cmo glical.cmo
+	ocamlc -a $+ -o $@
 
 glical.cmo:glical.ml glical_kernel.cmo glical.cmi
 	ocamlc -c $<
@@ -31,7 +31,7 @@ glical.cmi:glical.mli glical_kernel.cmi
 glical.opt:glical.cmxa glical_test.ml
 	ocamlopt -o $< $+
 
-glical.cmxa:glical.cmx
+glical.cmxa:glical_kernel.cmx glical.cmx
 	ocamlopt -a $< -o $@
 
 glical.cmx:glical.ml glical.cmi
