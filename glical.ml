@@ -34,22 +34,38 @@ let simple_cat ic oc =
         ) d in
   fprintf oc "%s%!" o
 
-let extract_assocs ?(kl=[]) ?(ks=SSet.empty) ical : 'a t =
+let extract_assocs ?(kl=[]) ?(ks=SSet.empty) ?k ical : 'a t =
+  (* [block] is necessary for performance issues, otherwise
+     calling [extract_assocs] would have been sufficient. *)
+  let rec block ?(kl=[]) ?(ks=SSet.empty) ?(k=None) = function
+    | [] -> false
+    | Block(_, _, l) :: tl -> block ~kl ~ks ~k l || block ~kl ~ks ~k tl
+    | Assoc(_, key, _)::tl ->
+      Some key = k || SSet.mem key ks || List.mem key kl
+      || block ~kl ~ks ~k tl
+  in    
   let i =
     filter
       (function
-        | Block _ -> true
-        | Assoc(_, k, _) -> SSet.mem k ks || List.mem k kl)
+        | Block(_, _, l) -> block ~kl ~ks ~k l
+        | Assoc(_, key, _) ->
+          Some key = k || SSet.mem key ks || List.mem key kl)
       ical
   in
   i
 
-let extract_values ?(kl=[]) ?(ks=SSet.empty) ical : 'value list =
-  fold_on_assocs
-    (fun accu key value -> value::accu)
-    []
-    (extract_assocs ~kl ~ks ical)
-
+let extract_values ?(kl=[]) ?(ks=SSet.empty) ?k ical : 'value list =
+  match k with
+  | None ->
+    fold_on_assocs
+      (fun accu key value -> value::accu)
+      []
+      (extract_assocs ~kl ~ks ical)
+  | Some k ->
+    fold_on_assocs
+      (fun accu key value -> value::accu)
+      []
+      (extract_assocs ~kl ~ks ~k ical)
 
 let list_keys_rev ical : string list =
   let ks = ref SSet.empty in
@@ -70,7 +86,10 @@ let list_keys ical : string list =
   List.rev (list_keys_rev ical)
 
 
-let list_keys_ordered ical : string list =
+let list_keys_ordered ?(compare=String.compare) ical : string list =
+  let
+    module SSet = Set.Make(struct type t = string let compare = compare end)
+  in
   let ks = ref SSet.empty in
   iter
     (function
@@ -86,20 +105,19 @@ let list_keys_ordered ical : string list =
 
 let combine ical1 ical2 : 'a t =
   match ical1, ical2 with
-  | [Block(locx, x, xc)], [Block(locy, y, yc)] ->
+  | [Block(locx, x, xc)], [Block(locy, y, yc)] when x = y ->
     [Block(locx, x, xc@yc)]
   | [], _ -> ical2
   | _, [] -> ical1
   | _ -> ical1 @ ical2
 
 
-(* let combine_vevents ... *)
-
-
-
-
-
-
+let rec combine_many = function
+  | [] -> []
+  | [ical] -> ical
+  | ical1::ical2::tl ->
+    combine_many ((combine ical1 ical2)::tl)
+  
 
 (* ********************************************************************* *)
 (* Permission to use, copy, modify, and/or distribute this software
