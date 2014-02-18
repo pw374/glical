@@ -41,7 +41,7 @@ let to_socaml ?(f=(fun _ -> None)) t =
     let s = String.copy s in
     for i = 0 to String.length s - 1 do
       match s.[i] with
-      | 'a' .. 'z' | '0' .. '9' | '_' -> ()
+      | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' -> ()
       | _ -> s.[i] <- '_'        
     done;
     s
@@ -68,7 +68,6 @@ let to_socaml ?(f=(fun _ -> None)) t =
            | `Raw(loc, x) ->
              bprintf b "let v_%s = %S\n" !!s x
            | _ -> ());
-      Buffer.add_string b "\n";
       loop tl
   in
   loop t;
