@@ -14,6 +14,7 @@ let inputs = ref []
 let template = ref None
 let out = ref stdout
 let socaml = ref false
+let docaml = ref false
 let filters =
   object
     val mutable s = SSet.empty
@@ -31,7 +32,11 @@ let assert_ a m =
 
 let wrap f x =
   try f x
-  with e ->
+  with
+  | Sys_error(s) ->
+    assert_ false s;
+    assert false
+  | e ->
     assert_ false (Printexc.to_string e);
     assert false
 
@@ -54,6 +59,9 @@ let () =
       ("-s",
        Unit(fun () -> socaml := true; ical := false),
        " output an OCaml programming environment");
+      ("-d",
+       Unit(fun () -> docaml := true; ical := false),
+       " output an OCaml data structure");
       ("-f",
        String(filters#add),
        " specify a label that should be kept");
@@ -63,15 +71,10 @@ let () =
   )
 
 let _ =
-  if !template <> None then
-    assert_ (!ical = false && !socaml = false)
-      "You can only have one of -ical, -tpl and -s";
-  if !socaml then
-    assert_ (!ical = false)
-      "You can only have one of -ical, -tpl and -s";
-  if !ical then
-    assert_ (!socaml = false)
-      "You can only have one of -ical, -tpl and -s";
+  assert_ (List.filter (fun x -> x)
+             [!template <> None; !ical; !socaml; !docaml]
+           = [true])
+    "You can only have one of -ical, -tpl, -d and -s";
   if !inputs = [] then
     inputs := [stdin];
   ()
@@ -89,6 +92,16 @@ let _ =
       !out
       "%s"
       (to_socaml
+         ~f:(function
+             | (`Text _ | `Raw _) -> None
+             | `Datetime d -> Some(Datetime.to_string d)
+           )
+         data)
+  else if !docaml then
+    fprintf
+      !out
+      "%s"
+      (to_docaml
          ~f:(function
              | (`Text _ | `Raw _) -> None
              | `Datetime d -> Some(Datetime.to_string d)
