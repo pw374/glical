@@ -74,6 +74,48 @@ let to_socaml ?(f=(fun _ -> None)) t =
   Buffer.contents b
 
 
+let to_docaml ?(f=(fun _ -> None)) t =
+  let open Buffer in
+  let b = Buffer.create 42 in
+  let add_spaces n =
+    for i = 1 to n do
+      Buffer.add_char b ' '
+    done
+  in
+  let rec loop indent = function
+    | [] -> ()
+    | Block((l, c), s, v)::tl ->
+      add_spaces indent;
+      bprintf b "Block((%d, %d), %S, [\n" l c s;
+      loop (indent+2) v;
+      add_spaces indent;
+      bprintf b "]);\n";
+      loop indent tl
+    | Assoc((l, c), s, r)::tl ->
+      add_spaces indent;
+      (match f r with
+         | Some x ->
+           bprintf b "Assoc((%d, %d), %S, %s);" l c s x;
+         | None ->
+           match r with
+           | `Text((ll, cc), xtl) ->
+             bprintf b "Assoc((%d, %d), %S, `Text((%d, %d), [" l c s ll cc;
+             List.iter
+               (fun e -> bprintf b "; %S" e)
+               xtl;
+             bprintf b "]);";
+           | `Raw((ll, cc), x) ->
+             bprintf b "Assoc((%d, %d), %S, `Raw((%d, %d), %S));\n"
+               l c s ll cc x
+           | _ -> ());
+      loop indent tl
+  in
+  add_string b "[\n";
+  loop 2 t;
+  add_string b "]\n";
+  contents b
+
+
 let extract_assocs ?(kl=[]) ?(ks=SSet.empty) ?k ical : 'a t =
   (* [block] is necessary for performance issues, otherwise
      calling [extract_assocs] would have been sufficient. *)
