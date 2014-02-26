@@ -84,7 +84,7 @@ remove: [
   ["./configure" "-prefix" prefix]
   [make "uninstall"]
 ]
-ocaml-version: [ >= "4.01.0" ]
+ocaml-version: [ >= "3.12.1" ]
 tags: [
   "org:ocamllabs"
 ]
