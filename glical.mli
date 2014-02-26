@@ -7,36 +7,8 @@
 
 include module type of Glical_kernel
 
-(** SSet = Set.Make(String) *)
-module SSet :
-  sig
-    type elt = String.t
-    type t = Set.Make(String).t
-    val empty : t
-    val is_empty : t -> bool
-    val mem : elt -> t -> bool
-    val add : elt -> t -> t
-    val singleton : elt -> t
-    val remove : elt -> t -> t
-    val union : t -> t -> t
-    val inter : t -> t -> t
-    val diff : t -> t -> t
-    val compare : t -> t -> int
-    val equal : t -> t -> bool
-    val subset : t -> t -> bool
-    val iter : (elt -> unit) -> t -> unit
-    val fold : (elt -> 'a -> 'a) -> t -> 'a -> 'a
-    val for_all : (elt -> bool) -> t -> bool
-    val exists : (elt -> bool) -> t -> bool
-    val filter : (elt -> bool) -> t -> t
-    val partition : (elt -> bool) -> t -> t * t
-    val cardinal : t -> int
-    val elements : t -> elt list
-    val min_elt : t -> elt
-    val max_elt : t -> elt
-    val choose : t -> elt
-    val split : elt -> t -> t * bool * t
-  end
+module SSet : Set.S with type elt = String.t
+(** Set of strings. *)
 
 (** [channel_contents ic] eats all contents of [ic] and returns it as
     a string. Beware: if the contents is very big, it might fail,
@@ -66,7 +38,7 @@ val extract_values :
   ([> `Raw of location * string ] as 'a) Ical.t ->
   'a list
 
-(** [list_keys_rev ical] is like [list_keys ical] except that the 
+(** [list_keys_rev ical] is like [list_keys ical] except that the
     result is reversed and performs faster. *)
 val list_keys_rev :
   [> `Raw of location * string ] Ical.t -> string list
@@ -83,14 +55,14 @@ val list_keys_ordered :
   ?compare:(string -> string -> int) ->
   [> `Raw of location * string ] Ical.t -> string list
 
-(** [combine ical1 ical2] returns the combination of 
+(** [combine ical1 ical2] returns the combination of
     the two iCalendars [ical1] and [ical2]. *)
 val combine :
   ([> `Raw of location * string ] as 'a) Ical.t ->
   'a Ical.t -> 'a Ical.t
 
 
-(** [combine_many icals] returns the combination of 
+(** [combine_many icals] returns the combination of
     the all iCalendars of [icals]. *)
 val combine_many :
   ([> `Raw of location * string ] as 'a) Ical.t list ->

@@ -114,7 +114,7 @@ let _ =
       (to_string
          ~f:(function
              | (`Text _ | `Raw _) -> None
-             | `Datetime d -> Some(Datetime.to_string d) 
+             | `Datetime d -> Some(Datetime.to_string d)
            )
          data)
 
