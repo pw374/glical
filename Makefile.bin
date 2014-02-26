@@ -4,14 +4,14 @@
 # Licence: ISC
 ###########################################################################
 
-include Makefile.bin
-include Makefile.lib
+glical:glical.cma glical_bin.cmo
+	ocamlc -o $@ $+
 
-.PHONY:clean
+glical_bin.cmo:glical_bin.ml
+	ocamlc -c $@ $+
 
-clean:
-	rm -f *.cm[aiox] *.cmxa
-
+glical.opt:glical.cmxa glical_test.ml
+	ocamlopt -o $< $+
 
 
 # Permission to use, copy, modify, and/or distribute this software
