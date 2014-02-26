@@ -16,7 +16,7 @@ let channel_contents ic =
   begin
     try
       while true do
-        Buffer.add_char b (input_char ic) 
+        Buffer.add_char b (input_char ic)
       done with End_of_file -> ()
   end;
   Buffer.contents b
@@ -30,7 +30,7 @@ let simple_cat ic oc =
     to_string
       ~f:(function
           | (`Text _ | `Raw _) -> None
-          | `Datetime d -> Some(Datetime.to_string d) 
+          | `Datetime d -> Some(Datetime.to_string d)
         ) d in
   fprintf oc "%s%!" o
 
@@ -42,7 +42,7 @@ let to_socaml ?(f=(fun _ -> None)) t =
     for i = 0 to String.length s - 1 do
       match s.[i] with
       | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' -> ()
-      | _ -> s.[i] <- '_'        
+      | _ -> s.[i] <- '_'
     done;
     s
   in
@@ -56,7 +56,7 @@ let to_socaml ?(f=(fun _ -> None)) t =
     | Assoc(_, s, r)::tl ->
       (match f r with
          | Some x ->
-           bprintf b "let v_%s = %S\n" !!s x 
+           bprintf b "let v_%s = %S\n" !!s x
          | None ->
            match r with
            | `Text(loc, xtl) ->
@@ -125,7 +125,7 @@ let extract_assocs ?(kl=[]) ?(ks=SSet.empty) ?k ical : 'a t =
     | Assoc(_, key, _)::tl ->
       Some key = k || SSet.mem key ks || List.mem key kl
       || block ~kl ~ks ~k tl
-  in    
+  in
   let i =
     filter
       (function
@@ -183,7 +183,7 @@ let list_keys_ordered ?(compare=String.compare) ical : string list =
           ks := SSet.add k !ks)
     ical;
   SSet.elements !ks
-        
+
 
 let combine ical1 ical2 : 'a t =
   match ical1, ical2 with
@@ -199,7 +199,7 @@ let rec combine_many = function
   | [ical] -> ical
   | ical1::ical2::tl ->
     combine_many ((combine ical1 ical2)::tl)
-  
+
 
 (* ********************************************************************* *)
 (* Permission to use, copy, modify, and/or distribute this software

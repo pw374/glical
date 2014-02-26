@@ -38,7 +38,7 @@ val extract_values :
   ([> `Raw of location * string ] as 'a) Ical.t ->
   'a list
 
-(** [list_keys_rev ical] is like [list_keys ical] except that the 
+(** [list_keys_rev ical] is like [list_keys ical] except that the
     result is reversed and performs faster. *)
 val list_keys_rev :
   [> `Raw of location * string ] Ical.t -> string list
@@ -55,14 +55,14 @@ val list_keys_ordered :
   ?compare:(string -> string -> int) ->
   [> `Raw of location * string ] Ical.t -> string list
 
-(** [combine ical1 ical2] returns the combination of 
+(** [combine ical1 ical2] returns the combination of
     the two iCalendars [ical1] and [ical2]. *)
 val combine :
   ([> `Raw of location * string ] as 'a) Ical.t ->
   'a Ical.t -> 'a Ical.t
 
 
-(** [combine_many icals] returns the combination of 
+(** [combine_many icals] returns the combination of
     the all iCalendars of [icals]. *)
 val combine_many :
   ([> `Raw of location * string ] as 'a) Ical.t list ->
