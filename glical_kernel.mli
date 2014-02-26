@@ -94,6 +94,7 @@ val iter :
   (([> `Raw of location * string ] as 'a) Ical.element -> unit) ->
   'a Ical.t -> unit
 
+(**  *)
 val sort : (([> `Raw of location * string ] as 'a) Ical.element -> 'a Ical.element -> int) ->
   'a Ical.t -> 'a Ical.t
 
@@ -130,18 +131,17 @@ val is_nonempty_block : 'a Ical.element -> bool
 
 (* Value formats *)
 (* ******************************************************************** *)
-(** [text_of_raw label value] converts [`Raw(loc, s)] to [`Text(loc,sl)]
+(** [text_of_raw] converts [`Raw(loc, s)] to [`Text(loc,sl)]
     where [sl] is the list of text values in [s]. Note that it is a list
     because in iCalendar a label can be associated with multiple values.
-    Note that [loc] isn't changed, and [sl] is a [string list].
+    Note that [loc] isn't changed.
     This conversion interpretes backslash-escaped characters and
     commas, the latter are used for separating multiple values.
     (http://tools.ietf.org/html/rfc5545#section-3.3.11) *)
 val text_of_raw :
-  string ->
   ([> `Raw of location * string
    | `Text of location * string list ] as 'a)
-  -> string * 'a
+  -> 'a
 
 
 (** A module to represent date-time values. Since there are way

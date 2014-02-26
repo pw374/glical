@@ -5,8 +5,6 @@
 (* Licence: ISC                                                          *)
 (* ********************************************************************* *)
 
-(** Important note: this library needs OCaml >= 4.1.0 *)
-
 type location = int * int
 and name = string
 and key = string
@@ -40,7 +38,7 @@ let syntax_error s ln cn = raise (Syntax_error (sprintf "(%d:%d): %s." ln cn s))
 let syntax_assert b s ln cn  = if not b then syntax_error s ln cn
 
 (** http://tools.ietf.org/html/rfc5545#section-3.3.11 (TEXT) *)
-let text_of_raw (label:string) = function
+let text_of_raw = function
   | `Raw((ln, cn) as location, s) ->
     let sl = String.length s in
     let open Buffer in
@@ -77,8 +75,8 @@ let text_of_raw (label:string) = function
            feeds read by this program do comply with RFC 5545. *)
         | c -> add_char b c; loop accu (i+1)
     in
-    label, `Text(location, List.rev (loop [] 0))
-  | x -> label, x
+    `Text(location, List.rev (loop [] 0))
+  | x -> x
 
 let lex_ical s =
   let name = Buffer.create 42
