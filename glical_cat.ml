@@ -5,10 +5,12 @@
 (* Licence: ISC                                                          *)
 (* ********************************************************************* *)
 
+(* This is a tiny example that shows a trivial usecase of Glical. *)
+
 open Glical
 
-let _ =
-  let s = Glical.channel_contents stdin stdout in
+let cat input output =
+  let s = Glical.channel_contents input in
   let l = lex_ical s in
   let p : 'a Ical.t = parse_ical l in
   let d = Datetime.parse_datetime p in
@@ -18,7 +20,10 @@ let _ =
           | (`Text _ | `Raw _) -> None
           | `Datetime d -> Some(Datetime.to_string d) 
         ) d in
-  Printf.printf "%s%!" o
+  Printf.fprintf output "%s%!" o
+
+let _ =
+  cat stdin stdout
 
 (* ********************************************************************* *)
 (* Permission to use, copy, modify, and/or distribute this software
