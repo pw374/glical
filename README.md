@@ -46,8 +46,10 @@ Distribution
 
 The development of this library is at the early stage. 
 Do feel free to try it and give feedbacks.
-There should be just a single `.ml` file for this library,
-and a `.mli` file is on its way if it's not already there.
+
+An opam package (named `glical`) is on its way (the first PR has been submitted) for the *library* part.
+
+The command-line tool will be distributed at some point in another package (possibly `glical-tool`).
 
 Contribution
 ------------
