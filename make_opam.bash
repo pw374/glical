@@ -23,7 +23,7 @@ cp Makefile.lib $p/
 cat > $p/Makefile <<\EOF
 build:glical.cma glical.cmxa	
 
-install:glical.cma glical.cmxa
+install:glical.cma glical.cmxa glical.mli glical.cmo glical.cmx glical_kernel.mli glical_kernel.cmo glical_kernel.cmx
 	mkdir -p ${PREFIX}/lib/glical/
 	cp $+ ${PREFIX}/lib/glical/
 #	cp glical ${PREFIX}/bin/
