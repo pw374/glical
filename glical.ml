@@ -6,7 +6,8 @@
 (* ********************************************************************* *)
 
 open Printf
-include Glical_kernel
+module Kernel = Glical_kernel
+include Kernel
 open Ical
 
 module SSet = Set.Make(String)

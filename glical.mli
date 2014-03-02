@@ -5,7 +5,8 @@
 (* Licence: ISC                                                          *)
 (* ********************************************************************* *)
 
-include module type of Glical_kernel
+module Kernel : module type of Glical_kernel
+include module type of Kernel
 
 module SSet : Set.S with type elt = String.t
 (** Set of strings. *)
