@@ -14,24 +14,32 @@ and name = string
 (* A key is a string. *)
 and key = string
 
+class type ['a] value = object
+  constraint 'a = [> `Raw of string ]
+  method location : location
+  method to_string : string
+  method to_pretty : string
+  method value : 'a
+end
 
 (** Module for the representation of iCalendar data. *)
 module Ical : sig
   (** iCalendar data is a list of elements. *)
-  type 'value t = ([> `Raw of location * string ] as 'value) element list
-
+  type 'a t = 'a element list
+    constraint 'a = [> `Raw of string ]
   (** An element is either a block, which is a characterized by a name
       and a list of elements, or a pair, which associates a key to a
       value. A value can be pretty much anything, that depends on the
       context in which it's found, however any value has a "raw"
       representation, which is the basically the bytes in the
       iCalendar data. *)
-  and 'value element =
-    | Block of location * name * 'value t
-    | Assoc of location * key * ([> `Raw of location * string ] as 'value)
+  and 'a element =
+    | Block of location * name * 'a t
+    | Assoc of location * key * 'a parameters * 'a value
+    constraint 'a = [> `Raw of string ]
+  and 'a parameters = (key * 'a value) list
+    constraint 'a = [> `Raw of string ]
 end
-
-
 
 (* Syntax errors *)
 (* ******************************************************************** *)
@@ -63,7 +71,7 @@ val lex_ical : string -> line list
 (* Parsing *)
 (* ******************************************************************** *)
 (** [parse_ical l] returns the iCalendar tree that's encoded in [l] *)
-val parse_ical : line list -> [> `Raw of location * string ] Ical.t
+val parse_ical : line list -> [> `Raw of string ] Ical.t
 (* ******************************************************************** *)
 
 (* Data processing *)
@@ -73,9 +81,9 @@ val parse_ical : line list -> [> `Raw of location * string ] Ical.t
 val map_values :
   (
     string ->
-    ([> `Raw of location * string ] as 'a) ->
-    (string * ([> `Raw of location * string ] as 'b))
-  ) -> 'a Ical.t -> 'b Ical.t
+    (([> `Raw of string ] as 'a) value) ->
+    (string * ([> `Raw of string ] as 'a) value)
+  ) -> 'a Ical.t -> 'a Ical.t
 
 (** [map f t] is like [map f t] except that [f] is applied to the
     whole [Assoc(_)]. Note that [map] is equivalent to [List.map] if
@@ -83,19 +91,19 @@ val map_values :
     is that [map] is recursively called over all elements of all
     blocks. *)
 val map :
-  (([> `Raw of location * string ] as 'a) Ical.element ->
-   ([> `Raw of location * string ] as 'b) Ical.element) ->
+  (([> `Raw of string ] as 'a) Ical.element ->
+   ([> `Raw of string ] as 'b) Ical.element) ->
   'a Ical.t -> 'b Ical.t
 
 
 (** [iter f ical] applies the function [f] to all [Assoc(loc, s, r)] elements
     of [ical]. *)
 val iter :
-  (([> `Raw of location * string ] as 'a) Ical.element -> unit) ->
+  (([> `Raw of string ] as 'a) Ical.element -> unit) ->
   'a Ical.t -> unit
 
 (**  *)
-val sort : (([> `Raw of location * string ] as 'a) Ical.element -> 'a Ical.element -> int) ->
+val sort : (([> `Raw of string ] as 'a) Ical.element -> 'a Ical.element -> int) ->
   'a Ical.t -> 'a Ical.t
 
 (** [filter f t] returns all elements of [t] that satisfy the
@@ -114,7 +122,7 @@ val filter : ('a Ical.element -> bool) -> 'a Ical.t -> 'a Ical.t
     of (key*value) met when browsing [ical]. It's similar to
     [List.fold_left]. *)
 val fold_on_assocs :
-  ('accu -> key -> 'value -> 'accu) -> 'accu -> 'value Ical.t -> 'accu
+  ('accu -> key -> 'a value -> 'accu) -> 'accu -> 'a Ical.t -> 'accu
 
 
 (** [is_empty_block t] returns [true] if [t] is an empty block,
@@ -131,17 +139,15 @@ val is_nonempty_block : 'a Ical.element -> bool
 
 (* Value formats *)
 (* ******************************************************************** *)
-(** [text_of_raw] converts [`Raw(loc, s)] to [`Text(loc,sl)]
+(** [text_of_raw location s] converts [s] to [sl]
     where [sl] is the list of text values in [s]. Note that it is a list
     because in iCalendar a label can be associated with multiple values.
-    Note that [loc] isn't changed.
+    Note that [location] is only used when there's a syntax error.
     This conversion interpretes backslash-escaped characters and
     commas, the latter are used for separating multiple values.
     (http://tools.ietf.org/html/rfc5545#section-3.3.11) *)
 val text_of_raw :
-  ([> `Raw of location * string
-   | `Text of location * string list ] as 'a)
-  -> 'a
+  location -> string -> string list
 
 
 (** A module to represent date-time values. Since there are way
@@ -149,24 +155,23 @@ val text_of_raw :
     3 possibilities: [`Local] represents localtime, in practice this
     means that there's no timezone indicator; [`UTC] represents UTC,
     in practice it means that the values ens with an additional Z character
-    if you compare to localtime; and [`String s] where the timezone
-    is encoded in the string [s]. [`String s] is used when the date-time
+    if you compare to localtime; and [`TZID s] where the timezone
+    is encoded in the string [s]. [`TZID s] is used when the date-time
     value has a field "TZID=".
 
    (http://tools.ietf.org/html/rfc2445#section-4.3.5) *)
 module Datetime :
   sig
-    type 'a t = {
+    type t = {
       year : int;
       month : int;
       day : int;
       hours : int;
       minutes : int;
       seconds : int;
-      timezone : 'a timezone;
-    } constraint 'a = [> `Local | `String of string | `UTC ]
-    and 'a timezone = 'a
-      constraint 'a = [> `Local | `String of string | `UTC ]
+      timezone : timezone;
+    }
+    and timezone = [ `Local | `UTC | `TZID of string ]
 
     (** [validate s] returns [true] if the format of [s] satisfies a
         set of criteria (which is not enough to ensure that [s] is
@@ -175,25 +180,24 @@ module Datetime :
         there isn't a list of existing or future leap seconds in this
         library. However leap seconds are only accepted for June and
         December. *)
-    val validate : [ `Local | `String of string | `UTC ] t -> bool
+    val validate : t -> bool
 
     (** [to_string] performs a conversion to a string *)
-    val to_string : [ `Local | `String of string | `UTC ] t -> string
+    val to_string : t -> string
 
     (** [parse loc s] extract a date-time from [s]. If it fails to
         read a date-time, it raises a [Syntax_error _] exception.
         Note that [loc] is only used to know the location when the
         parsing fails. *)
     val parse :
-      location -> string -> [> `Local | `String of string | `UTC ] t
+      location -> string -> t
 
     (** [parse_datetime ical] applies [parse] to each element
         of [ical] that satisfies the following pattern
         [("DTSTAMP", (`Text _ | `Raw _))] *)
     val parse_datetime :
-      ([> `Datetime of [> `Local | `String of string | `UTC ] t
-       | `Raw of location * string
-       | `Text of location * string list ]
+      ([> `Datetime of t
+       | `Raw of string ]
        as 'a) Ical.t -> 'a Ical.t
   end
 
@@ -248,7 +252,7 @@ val ical_format : string list -> string
 (* ******************************************************************** *)
 (** [to_string f ical] returns the string that represents [ical].
     [ical] shall have any value of type
-    [> `Raw of location * string | `Text of location * string list ]
+    [> `Raw of string | `Text of location * string list ]
     union the type of any value that the function [f] can convert to string.
     Elements that couldn't be properly converted to a string are converted
     to the empty string.
@@ -257,11 +261,11 @@ val ical_format : string list -> string
     would be very wrong to return [Some ""] when the proper value should
     be [None].
     Note that [f] can override the default conversion semantics for elements of
-    the type [`Raw of location * string | `Text of location * string list ].
+    the type [`Raw of string | `Text of location * string list ].
 *)
 val to_string :
-  ?f:(([> ] as 'a) -> string option) ->
-  ([> `Raw of location * string | `Text of location * string list ] as 'a)
+  ?f:(([> ] as 'a) value -> string option) ->
+  ([> `Raw of string | `Text of string list ] as 'a)
     Ical.t -> string
 
 
