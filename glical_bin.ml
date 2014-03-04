@@ -13,8 +13,6 @@ let ical = ref true
 let inputs = ref []
 let template = ref None
 let out = ref stdout
-let socaml = ref false
-let docaml = ref false
 let filters =
   object
     val mutable s = SSet.empty
@@ -56,12 +54,6 @@ let () =
       ("-o",
        String(wrap(fun s -> out := open_out_bin s)),
        "f use file f as output (default is stdout)");
-      ("-s",
-       Unit(fun () -> socaml := true; ical := false),
-       " output an OCaml programming environment");
-      ("-d",
-       Unit(fun () -> docaml := true; ical := false),
-       " output an OCaml data structure");
       ("-f",
        String(filters#add),
        " specify a label that should be kept");
@@ -72,9 +64,9 @@ let () =
 
 let _ =
   assert_ (List.filter (fun x -> x)
-             [!template <> None; !ical; !socaml; !docaml]
+             [!template <> None; !ical; ]
            = [true])
-    "You can only have one of -ical, -tpl, -d and -s";
+    "You can only have one of -ical and -tpl";
   if !inputs = [] then
     inputs := [stdin];
   ()
@@ -87,36 +79,10 @@ let _ =
     List.iter (fun i -> Buffer.add_string b (channel_contents i)) !inputs;
     parse_ical(lex_ical(Buffer.contents b))
   in
-  if !socaml then
-    fprintf
-      !out
-      "%s"
-      (to_socaml
-         ~f:(function
-             | (`Text _ | `Raw _) -> None
-             | `Datetime d -> Some(Datetime.to_string d)
-           )
-         data)
-  else if !docaml then
-    fprintf
-      !out
-      "%s"
-      (to_docaml
-         ~f:(function
-             | (`Text _ | `Raw _) -> None
-             | `Datetime d -> Some(Datetime.to_string d)
-           )
-         data)
-  else
-    fprintf
-      !out
-      "%s"
-      (to_string
-         ~f:(function
-             | (`Text _ | `Raw _) -> None
-             | `Datetime d -> Some(Datetime.to_string d)
-           )
-         data)
+  fprintf
+    !out
+    "%s"
+    (to_string ~f:(fun _ -> None) data)
 
 
 
