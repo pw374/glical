@@ -27,94 +27,8 @@ let simple_cat ic oc =
   let l = lex_ical s in
   let p : 'a Ical.t = parse_ical l in
   let d = Datetime.parse_datetime p in
-  let o =
-    to_string
-      ~f:(function
-          | (`Text _ | `Raw _) -> None
-          | `Datetime d -> Some(Datetime.to_string d)
-        ) d in
+  let o = to_string ~f:(fun _ -> None) d in
   fprintf oc "%s%!" o
-
-
-let to_socaml ?(f=(fun _ -> None)) t =
-  let b = Buffer.create 42 in
-  let (!!) s =
-    let s = String.copy s in
-    for i = 0 to String.length s - 1 do
-      match s.[i] with
-      | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' -> ()
-      | _ -> s.[i] <- '_'
-    done;
-    s
-  in
-  let rec loop = function
-    | [] -> ()
-    | Block(_, s, v)::tl ->
-      bprintf b "module M_%s = struct\n" !!s;
-      loop v;
-      bprintf b "end (*M_%s*)\n" !!s;
-      loop tl
-    | Assoc(_, s, r)::tl ->
-      (match f r with
-         | Some x ->
-           bprintf b "let v_%s = %S\n" !!s x
-         | None ->
-           match r with
-           | `Text(loc, xtl) ->
-             bprintf b "let v_%s = [%S]\n" !!s
-               (List.fold_left
-                  (fun r e -> r ^ sprintf "; %S" e)
-                  ""
-                  xtl)
-           | `Raw(loc, x) ->
-             bprintf b "let v_%s = %S\n" !!s x
-           | _ -> ());
-      loop tl
-  in
-  loop t;
-  Buffer.contents b
-
-
-let to_docaml ?(f=(fun _ -> None)) t =
-  let open Buffer in
-  let b = Buffer.create 42 in
-  let add_spaces n =
-    for i = 1 to n do
-      Buffer.add_char b ' '
-    done
-  in
-  let rec loop indent = function
-    | [] -> ()
-    | Block((l, c), s, v)::tl ->
-      add_spaces indent;
-      bprintf b "Block((%d, %d), %S, [\n" l c s;
-      loop (indent+2) v;
-      add_spaces indent;
-      bprintf b "]);\n";
-      loop indent tl
-    | Assoc((l, c), s, r)::tl ->
-      add_spaces indent;
-      (match f r with
-         | Some x ->
-           bprintf b "Assoc((%d, %d), %S, %s);" l c s x;
-         | None ->
-           match r with
-           | `Text((ll, cc), xtl) ->
-             bprintf b "Assoc((%d, %d), %S, `Text((%d, %d), [" l c s ll cc;
-             List.iter
-               (fun e -> bprintf b "; %S" e)
-               xtl;
-             bprintf b "]);";
-           | `Raw((ll, cc), x) ->
-             bprintf b "Assoc((%d, %d), %S, `Raw((%d, %d), %S));\n"
-               l c s ll cc x
-           | _ -> ());
-      loop indent tl
-  in
-  add_string b "[\n";
-  loop 2 t;
-  add_string b "]\n";
-  contents b
 
 
 let extract_assocs ?(kl=[]) ?(ks=SSet.empty) ?k ical : 'a t =
@@ -123,7 +37,7 @@ let extract_assocs ?(kl=[]) ?(ks=SSet.empty) ?k ical : 'a t =
   let rec block ?(kl=[]) ?(ks=SSet.empty) ?(k=None) = function
     | [] -> false
     | Block(_, _, l) :: tl -> block ~kl ~ks ~k l || block ~kl ~ks ~k tl
-    | Assoc(_, key, _)::tl ->
+    | Assoc(_, key, _, _)::tl ->
       Some key = k || SSet.mem key ks || List.mem key kl
       || block ~kl ~ks ~k tl
   in
@@ -131,7 +45,7 @@ let extract_assocs ?(kl=[]) ?(ks=SSet.empty) ?k ical : 'a t =
     filter
       (function
         | Block(_, _, l) -> block ~kl ~ks ~k l
-        | Assoc(_, key, _) ->
+        | Assoc(_, key, _, _) ->
           Some key = k || SSet.mem key ks || List.mem key kl)
       ical
   in
@@ -156,7 +70,7 @@ let list_keys_rev ical : string list =
   iter
     (function
         Block _ -> ()
-      | Assoc(loc, k, _) ->
+      | Assoc(loc, k, p, _) ->
         if SSet.mem k !ks then
           ()
         else
@@ -177,7 +91,7 @@ let list_keys_ordered ?(compare=String.compare) ical : string list =
   iter
     (function
         Block _ -> ()
-      | Assoc(loc, k, _) ->
+      | Assoc(loc, k, p, _) ->
         if SSet.mem k !ks then
           ()
         else

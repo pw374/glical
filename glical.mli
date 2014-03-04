@@ -27,7 +27,7 @@ val extract_assocs :
   ?kl:key list ->
   ?ks:SSet.t ->
   ?k:string ->
-  ([> `Raw of location * string ] as 'a) Ical.t ->
+  ([> `Raw of string ] as 'a) Ical.t ->
   'a Ical.t
 
 (** [extract_values ?kl ?ks ?k ical] is like [extract_assocs ?kl ?ks
@@ -36,79 +36,39 @@ val extract_values :
   ?kl:key list ->
   ?ks:SSet.t ->
   ?k:string ->
-  ([> `Raw of location * string ] as 'a) Ical.t ->
-  'a list
+  ([> `Raw of string ] as 'a) Ical.t ->
+  'a value list
 
 (** [list_keys_rev ical] is like [list_keys ical] except that the
     result is reversed and performs faster. *)
 val list_keys_rev :
-  [> `Raw of location * string ] Ical.t -> string list
+  [> `Raw of string ] Ical.t -> string list
 
 (** [list_keys ical] returns the list of keys from [ical].
     Each key only appears once. *)
 val list_keys :
-  [> `Raw of location * string ] Ical.t -> string list
+  [> `Raw of string ] Ical.t -> string list
 
 (** [list_keys_ordered ?compare ical] is like [list_keys ical] except
     that the result is ordered according to [String.compare] unless
     [~compare] is specified. *)
 val list_keys_ordered :
   ?compare:(string -> string -> int) ->
-  [> `Raw of location * string ] Ical.t -> string list
+  [> `Raw of string ] Ical.t -> string list
 
 (** [combine ical1 ical2] returns the combination of
     the two iCalendars [ical1] and [ical2]. *)
 val combine :
-  ([> `Raw of location * string ] as 'a) Ical.t ->
+  ([> `Raw of string ] as 'a) Ical.t ->
   'a Ical.t -> 'a Ical.t
 
 
 (** [combine_many icals] returns the combination of
     the all iCalendars of [icals]. *)
 val combine_many :
-  ([> `Raw of location * string ] as 'a) Ical.t list ->
+  ([> `Raw of string ] as 'a) Ical.t list ->
   'a Ical.t
 
-(** [to_socaml f ical] returns the OCaml program that represents [ical].
-    [ical] shall have any value of type
-    [> `Raw of location * string | `Text of location * string list ]
-    union the type of any value that the function [f] can convert to string.
-    Elements that couldn't be properly converted to a string are converted
-    to the empty string.
-    [f x] shall return [None] when [f] cannot convert [x] to a string,
-    and [Some s] when [s] is the string representation for [x]; and it
-    would be very wrong to return [Some ""] when the proper value should
-    be [None].
-    Note that [f] can override the default conversion semantics for elements of
-    the type [`Raw of location * string | `Text of location * string list ].
-*)
-val to_socaml :
-  ?f:(([> ] as 'a) -> string option) ->
-  ([> `Raw of location * string | `Text of location * string list
-   |  `Datetime of
-        [ `Local | `String of string | `UTC ] Datetime.t ] as 'a)
-    Ical.t -> string
-
-
-(** [to_docaml f ical] returns the OCaml data structure that represents [ical].
-    [ical] shall have any value of type
-    [> `Raw of location * string | `Text of location * string list ]
-    union the type of any value that the function [f] can convert to string.
-    Elements that couldn't be properly converted to a string are converted
-    to the empty string.
-    [f x] shall return [None] when [f] cannot convert [x] to a string,
-    and [Some s] when [s] is the string representation for [x]; and it
-    would be very wrong to return [Some ""] when the proper value should
-    be [None].
-    Note that [f] can override the default conversion semantics for elements of
-    the type [`Raw of location * string | `Text of location * string list ].
-*)
-val to_docaml :
-  ?f:(([> ] as 'a) -> string option) ->
-  ([> `Raw of location * string | `Text of location * string list
-   |  `Datetime of
-        [ `Local | `String of string | `UTC ] Datetime.t ] as 'a)
-    Ical.t -> string
 
 
 (* ********************************************************************* *)
