@@ -306,6 +306,8 @@ end
 
 
 let parse_ical l =
+  (* TODO: parse the [name] to separate the parameters that are still
+     inside. *)
   (* ob = opened blocks *)
   let rec loop (res:'a list) (ob:string option) = function
     | [] ->
