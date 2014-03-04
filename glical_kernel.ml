@@ -382,10 +382,8 @@ let make_text location value : 'a value = object
 end
 
 let parse_ical l =
-  (* TODO: parse the [name] to separate the parameters that are still
-     inside. *)
-  (* ob = opened blocks *)
   let rec loop (res:'a list) (ob:string option) = function
+    (* ob = opened blocks *)
     | [] ->
       begin match ob with
         | Some e -> syntax_error (sprintf "unclosed block %s" e) (-1) (-1);
@@ -406,9 +404,12 @@ let parse_ical l =
           syntax_error (sprintf "unexpected end of block %s" e)
             (fst v.name_start) (snd v.name_start)
       end
-    | {name; value} as v::tl ->
+    | {name; parameters; value} as v::tl ->
+      let p =
+        List.map (fun (pk, pv) -> pk, make_raw v.value_start pv) parameters
+      in
       loop
-        ((Assoc(v.name_start, name, [], make_raw v.value_start value))::res)
+        ((Assoc(v.name_start, name, p, make_raw v.value_start value))::res)
         ob
         tl
   and loop_rev res ob l =
