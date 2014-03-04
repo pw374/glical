@@ -617,7 +617,7 @@ let to_string ?(f=(fun _ -> None)) t =
 
 module Datetime =
 struct
-  (** http://tools.ietf.org/html/rfc2445#section-4.3.5 *)
+  (** http://tools.ietf.org/html/rfc5545#section-3.3.5 *)
 
   type timezone = [ `Local | `UTC | `TZID of string ]
 

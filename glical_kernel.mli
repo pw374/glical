@@ -160,7 +160,7 @@ val text_of_raw :
     is encoded in the string [s]. [`TZID s] is used when the date-time
     value has a field "TZID=".
 
-   (http://tools.ietf.org/html/rfc2445#section-4.3.5) *)
+    (http://tools.ietf.org/html/rfc5545#section-3.3.5) *)
 module Datetime :
   sig
     type t = {
@@ -204,7 +204,7 @@ module Datetime :
 
 
 (** A module to represent date values.
-    (http://tools.ietf.org/html/rfc2445#section-4.3.4) *)
+    (http://tools.ietf.org/html/rfc5545#section-3.3.4) *)
 module Date :
   sig
     (** type to represent a date *)
