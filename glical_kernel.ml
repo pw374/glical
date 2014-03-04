@@ -53,13 +53,28 @@ exception Syntax_error of string
 let syntax_error s ln cn =
   raise (Syntax_error (sprintf "(%d:%d): %s." ln cn s))
 
+let syntax_error_ s (ln, cn) =
+  raise (Syntax_error (sprintf "(%d:%d): %s." ln cn s))
+
 let syntax_assert b s ln cn =
+  if not b then syntax_error s ln cn
+
+let syntax_assert_ b s (ln, cn) =
   if not b then syntax_error s ln cn
 
 let syntax_warning s ln cn =
   eprintf "Warning (%d:%d): %s.\n" ln cn s
 
+let syntax_warning_ s (ln, cn) =
+  eprintf "Warning (%d:%d): %s.\n" ln cn s
+
 let syntax_warning_if cond s ln cn =
+  if cond then
+    syntax_warning s ln cn
+  else
+    ()
+
+let syntax_warning_if_ cond s (ln, cn) =
   if cond then
     syntax_warning s ln cn
   else
@@ -389,20 +404,25 @@ let parse_ical l =
         | Some e -> syntax_error (sprintf "unclosed block %s" e) (-1) (-1);
         | None -> res, []
       end
-    | {name="BEGIN"; value=e} as v::tl ->
-      let block, tl = loop_rev [] (Some e) tl in
-      loop ((Block(v.name_start, e, block))::res) ob tl
-    | {name="END"; value=e} as v::tl ->
+    | {name="BEGIN"; value} as v::tl ->
+      syntax_assert_ (v.parameters = []) "unexpected parameters for BEGIN"
+        v.name_start;
+      let block, tl = loop_rev [] (Some value) tl in
+      loop ((Block(v.name_start, value, block))::res) ob tl
+    | {name="END"; value} as v::tl ->
+      syntax_assert_ (v.parameters = []) "unexpected parameters for START"
+        v.name_start;
+      assert (v.parameters = []);
       begin match ob with
-        | Some x when x = e ->
+        | Some x when x = value ->
           res, tl
         | Some x ->
-          syntax_error (sprintf "unexpected end of block %s, \
-                                 expected end of block %s" x e)
-            (fst v.name_start) (snd v.name_start)
+          syntax_error_ (sprintf "unexpected end of block %s, \
+                                 expected end of block %s" x value)
+            v.name_start
         | None ->
-          syntax_error (sprintf "unexpected end of block %s" e)
-            (fst v.name_start) (snd v.name_start)
+          syntax_error_ (sprintf "unexpected end of block %s" value)
+            v.name_start
       end
     | {name; parameters; value} as v::tl ->
       let p =
@@ -420,8 +440,7 @@ let parse_ical l =
   | res, [] ->
     res
   | _, v::_ ->
-    syntax_error (sprintf "unexpected data")
-      (fst v.name_start) (snd v.name_start)
+    syntax_error_ (sprintf "unexpected data") v.name_start
 
 
 (** [map] keeps location and section names, it applies the
