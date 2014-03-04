@@ -56,6 +56,7 @@ val syntax_assert : bool -> string -> int -> int -> unit
     has to be backslash-escaped. *)
 type line = {
   name : string;
+  parameters : (string * string) list;
   value : string;
   name_start : int * int;
   value_start : int * int;

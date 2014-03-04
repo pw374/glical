@@ -5,13 +5,18 @@
 (* Licence: ISC                                                          *)
 (* ********************************************************************* *)
 
+(* Based on RFC5545. Beware: RFC2445 is deprecated. *)
+
 type location = int * int
 and name = string
 and key = string
 
 
 type line = { (* output of the lexer *)
+  (* Based on "contentline = name *(";" param ) ":" value CRLF"
+     from page 9 of http://tools.ietf.org/html/rfc5545#section-3.1 *)
   name: string;
+  parameters: (string * string) list;
   value: string;
   (* Locations *)
   name_start: int * int;
@@ -102,19 +107,84 @@ let text_of_raw (ln, cn) s =
 
 
 let lex_ical s =
+  (* Based on pages 9 and 10 of
+     http://tools.ietf.org/html/rfc5545#section-3.1
+     contentline   = name *(";" param ) ":" value CRLF
+     param         = param-name "=" param-value *("," param-value)
+     param-name    = iana-token / x-name
+     param-value   = paramtext / quoted-string
+     paramtext     = *SAFE-CHAR
+     value         = *VALUE-CHAR
+     quoted-string = DQUOTE *QSAFE-CHAR DQUOTE
+     QSAFE-CHAR    = WSP / %x21 / %x23-7E / NON-US-ASCII
+     ; Any character except CONTROL and DQUOTE
+     SAFE-CHAR     = WSP / %x21 / %x23-2B / %x2D-39 / %x3C-7E / NON-US-ASCII
+     ; Any character except CONTROL, DQUOTE, ";", ":", ","
+     VALUE-CHAR    = WSP / %x21-7E / NON-US-ASCII
+     ; Any textual character
+     NON-US-ASCII  = UTF8-2 / UTF8-3 / UTF8-4
+     ; UTF8-2, UTF8-3, and UTF8-4 are defined in [RFC3629]
+     CONTROL       = %x00-08 / %x0A-1F / %x7F
+     ; All the controls except HTAB *)
   let name = Buffer.create 42
   and value = Buffer.create 42
   and name_start = ref (0,0)
   and value_start = ref (0,0)
   in
+  let extract_np s =
+    let b = Buffer.create (String.length s) in
+    let name = ref s in
+    let k = ref "" in
+    let parameters = ref [] in
+    let rec loop (dq:bool) (p:bool) (eq:bool) i =
+      let loop ?(dq=dq) ?(p=p) ?(eq=eq) i = loop dq p eq i in
+      if i = String.length s then
+        ()
+      else match s.[i] with
+        | '"' ->
+          Buffer.add_char b s.[i];
+          loop ~dq:(not dq) (succ i)
+        | ';'
+        | '='
+          when dq
+          ->
+          Buffer.add_char b s.[i];
+          loop (succ i)
+        | ';' ->
+          if p then (* end of p value *)
+            begin
+              parameters := (!k, Buffer.contents b) :: !parameters;
+              Buffer.clear b;
+              loop ~p:true ~eq:false (succ i)
+            end
+          else (* not p && not dq ==> end of name *)
+            begin
+              name := Buffer.contents b;
+              Buffer.clear b;
+              loop ~p:true (succ i)
+            end
+        | '=' when not eq ->
+              k := Buffer.contents b;
+              Buffer.clear b;
+              loop ~eq:true (succ i)
+        | _ ->
+          Buffer.add_char b s.[i];
+          loop (succ i)
+    in
+    loop false false false 0;
+    !name, List.rev !parameters
+  in
   let sl = String.length s in
   let rec loop lines i (colon:bool) (dquotes:bool) (lc:int) (cc:int) =
+    (* colon: separator between  *)
     if i >= sl then
-      { name=Buffer.contents name;
-        value=Buffer.contents value;
-        name_start = !name_start;
+      let name, parameters = extract_np (Buffer.contents name) in
+      { name        = name;
+        parameters  = parameters;
+        value       = Buffer.contents value;
+        name_start  = !name_start;
         value_start = !value_start;
-        value_end = lc, cc;}
+        value_end   = lc, cc;}
       ::lines
     else
       match s.[i] with
@@ -132,20 +202,24 @@ let lex_ical s =
       | '\n' ->
         begin
           if i >= sl-1 then
-            { name=Buffer.contents name;
-              value=Buffer.contents value;
-              name_start = !name_start;
+            let name, parameters = extract_np (Buffer.contents name) in
+            { name        = name;
+              parameters  = parameters;
+              value       = Buffer.contents value;
+              name_start  = !name_start;
               value_start = !value_start;
-              value_end = lc, cc;}
+              value_end   = lc, cc;}
             ::lines
           else if s.[i+1] <> ' ' then
-            let nv = {
-              name=Buffer.contents name;
-              value=Buffer.contents value;
-              name_start = !name_start;
-              value_start = !value_start;
-              value_end = lc, cc;
-            }
+            let nv =
+              let name, parameters = extract_np (Buffer.contents name) in
+              { name        = name;
+                parameters  = parameters;
+                value       = Buffer.contents value;
+                name_start  = !name_start;
+                value_start = !value_start;
+                value_end   = lc, cc;
+              }
             in
             Buffer.clear name; Buffer.clear value;
             name_start := (lc+1,0);
@@ -167,7 +241,12 @@ let lex_ical s =
           syntax_error "unexpected space before colon" lc cc;
         loop lines (i+1) colon dquotes lc (cc+1)
       | ':' as c ->
-        if colon then
+        if dquotes then
+          begin
+            Buffer.add_char value c;
+            loop lines (i+1) colon dquotes lc (cc+1)
+          end
+        else if colon then
           begin
             Buffer.add_char value c;
             loop lines (i+1) true dquotes lc (cc+1)
@@ -297,13 +376,10 @@ end
 
 let make_text location value : 'a value = object
   method location = location
-  method to_string =
-    ical_format value
-  method to_pretty =
-    String.concat "," value
+  method to_string = ical_format value
+  method to_pretty = String.concat "," value
   method value : [> `Text of string list ] = `Text value
 end
-
 
 let parse_ical l =
   (* TODO: parse the [name] to separate the parameters that are still
