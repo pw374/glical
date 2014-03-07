@@ -14,13 +14,6 @@ and name = string
 (* A key is a string. *)
 and key = string
 
-class type ['a] value = object
-  constraint 'a = [> `Raw of string ]
-  method location : location
-  method to_string : string
-  method to_pretty : string
-  method value : 'a
-end
 
 (** Module for the representation of iCalendar data. *)
 module Ical : sig
@@ -39,6 +32,13 @@ module Ical : sig
     constraint 'a = [> `Raw of string ]
   and 'a parameters = (key * 'a value) list
     constraint 'a = [> `Raw of string ]
+
+  and 'a value = {
+    location : location;
+    to_string : (unit -> string);
+    to_pretty: (unit -> string);
+    value : 'a;
+  } constraint 'a = [> `Raw of string ]
 end
 
 (* Syntax errors *)
@@ -51,28 +51,30 @@ val syntax_assert : bool -> string -> int -> int -> unit
 
 (* Lexing *)
 (* ******************************************************************** *)
-(** A [line] is made of a name and a value. Sometimes, the value of a [line]
-    in a file is better off being on several lines, in which case the [\n]
-    has to be backslash-escaped. *)
-type line = {
-  name : string;
-  parameters : (string * string) list;
-  value : string;
-  name_start : int * int;
-  value_start : int * int;
-  value_end : int * int;
-}
-
-(** [lex_ical s] reads iCal data from the string [s] and returns a
-    list of [line]s. A [line] is not series of bytes separated by some
-    CRLF in [s] but a line in what the contents of [s] represents. *)
-val lex_ical : string -> line list
+module Lexing : sig
+  (** A [line] is made of a name and a value. Sometimes, the value of a [line]
+      in a file is better off being on several lines, in which case the [\n]
+      has to be backslash-escaped. *)
+  type line = {
+    name : string;
+    parameters : (string * string) list;
+    value : string;
+    name_start : location;
+    value_start : location;
+    value_end : location;
+  }
+  
+  (** [lex_ical s] reads iCal data from the string [s] and returns a
+      list of [line]s. A [line] is not series of bytes separated by some
+      CRLF in [s] but a line in what the contents of [s] represents. *)
+  val lex_ical : string -> line list
+end
 (* ******************************************************************** *)
 
 (* Parsing *)
 (* ******************************************************************** *)
 (** [parse_ical l] returns the iCalendar tree that's encoded in [l] *)
-val parse_ical : line list -> [> `Raw of string ] Ical.t
+val parse_ical : Lexing.line list -> [> `Raw of string ] Ical.t
 (* ******************************************************************** *)
 
 (* Data processing *)
@@ -82,8 +84,8 @@ val parse_ical : line list -> [> `Raw of string ] Ical.t
 val map_values :
   (
     string ->
-    (([> `Raw of string ] as 'a) value) ->
-    (string * ([> `Raw of string ] as 'a) value)
+    (([> `Raw of string ] as 'a) Ical.value) ->
+    (string * ([> `Raw of string ] as 'a) Ical.value)
   ) -> 'a Ical.t -> 'a Ical.t
 
 (** [map f t] is like [map f t] except that [f] is applied to the
@@ -123,7 +125,7 @@ val filter : ('a Ical.element -> bool) -> 'a Ical.t -> 'a Ical.t
     of (key*value) met when browsing [ical]. It's similar to
     [List.fold_left]. *)
 val fold_on_assocs :
-  ('accu -> key -> 'a value -> 'accu) -> 'accu -> 'a Ical.t -> 'accu
+  ('accu -> key -> 'a Ical.value -> 'accu) -> 'accu -> 'a Ical.t -> 'accu
 
 
 (** [is_empty_block t] returns [true] if [t] is an empty block,
@@ -265,7 +267,7 @@ val ical_format : string list -> string
     the type [`Raw of string | `Text of location * string list ].
 *)
 val to_string :
-  ?f:(([> ] as 'a) value -> string option) ->
+  ?f:(([> ] as 'a) Ical.value -> string option) ->
   ([> `Raw of string | `Text of string list ] as 'a)
     Ical.t -> string
 

@@ -11,28 +11,6 @@ type location = int * int
 and name = string
 and key = string
 
-
-type line = { (* output of the lexer *)
-  (* Based on "contentline = name *(";" param ) ":" value CRLF"
-     from page 9 of http://tools.ietf.org/html/rfc5545#section-3.1 *)
-  name: string;
-  parameters: (string * string) list;
-  value: string;
-  (* Locations *)
-  name_start: int * int;
-  value_start: int * int;
-  value_end: int * int;
-}
-
-class type ['a] value = object
-  constraint 'a = [> `Raw of string ]
-  method location : location
-  method to_string : string
-  method to_pretty : string
-  method value : 'a
-end
-
-
 module Ical =
 struct
   type 'a t = 'a element list
@@ -43,8 +21,14 @@ struct
     constraint 'a = [> `Raw of string ]
   and 'a parameters = (key * 'a value) list
     constraint 'a = [> `Raw of string ]
+  and 'a value = {
+    location : location;
+    to_string : unit -> string;
+    to_pretty: unit -> string;
+    value : 'a;
+  } constraint 'a = [> `Raw of string ]
 end
-open Ical
+(* open Ical *)
 
 open Printf
 
@@ -120,6 +104,18 @@ let text_of_raw (ln, cn) s =
     in
     List.rev (loop [] 0)
 
+module Lexing = struct
+type line = { (* output of the lexer *)
+  (* Based on "contentline = name *(";" param ) ":" value CRLF"
+     from page 9 of http://tools.ietf.org/html/rfc5545#section-3.1 *)
+  name: string;
+  parameters: (string * string) list;
+  value: string;
+  (* Locations *)
+  name_start: int * int;
+  value_start: int * int;
+  value_end: int * int;
+}
 
 let lex_ical s =
   (* Based on pages 9 and 10 of
@@ -284,6 +280,7 @@ let lex_ical s =
           end
   in
   List.rev (loop [] 0 false false 1 0)
+end
 
 
 let ical_format ls = (* limit lines to 75 bytes *)
@@ -382,21 +379,23 @@ let ical_format ls = (* limit lines to 75 bytes *)
   Buffer.contents b
 
 
-let make_raw location value : 'a value = object
-  method location = location
-  method to_string = value
-  method to_pretty = value
-  method value : [> `Raw of string ] = `Raw value
-end
+let make_raw location (value:string) : 'a Ical.value = {
+  location;
+  to_string = (fun () -> value);
+  to_pretty = (fun () -> value);
+  Ical.value = `Raw value;
+}
 
-let make_text location value : 'a value = object
-  method location = location
-  method to_string = ical_format value
-  method to_pretty = String.concat "," value
-  method value : [> `Text of string list ] = `Text value
-end
+let make_text location (value:string list) : 'a Ical.value = {
+ location;
+ to_string = (fun () -> ical_format value);
+ to_pretty = (fun () -> String.concat "," value);
+ Ical.value = `Text value;
+}
 
 let parse_ical l =
+  let open Ical in
+  let open Lexing in
   let rec loop (res:'a list) (ob:string option) = function
     (* ob = opened blocks *)
     | [] ->
@@ -445,7 +444,7 @@ let parse_ical l =
 
 (** [map] keeps location and section names, it applies the
     function [f] only to the values. *)
-let rec map_values f = function
+let rec map_values f = let open Ical in function
   | Block(loc, s, v)::tl ->
     Block(loc, s, map_values f v)::map_values f tl
   | Assoc(loc, s, p, r)::tl ->
@@ -456,7 +455,7 @@ let rec map_values f = function
 
 (** [map] keeps location and section names, it applies the
     function [f] to all [Assoc(loc, s, p, r)] elements. *)
-let rec map f = function
+let rec map f = let open Ical in function
   | Block(loc, s, v)::tl ->
     Block(loc, s, map f v)::map f tl
   | (Assoc(_, _, _, _) as e)::tl ->
@@ -466,7 +465,7 @@ let rec map f = function
 
 (** [iter f ical] applies the function [f] to all [Assoc(loc, s, r)] elements
     of [ical]. *)
-let rec iter f = function
+let rec iter f = let open Ical in function
   | Block(loc, s, v)::tl ->
     iter f v;
     iter f tl
@@ -476,14 +475,14 @@ let rec iter f = function
   | [] -> ()
 
 
-let rec sort compare = function
+let rec sort compare = let open Ical in function
   | Block(loc, s, v)::tl ->
     List.sort compare (Block(loc, s, sort compare v)::(sort compare tl))
   | (Assoc(loc, s, p, r) as e)::tl ->
     List.sort compare (e::sort compare tl)
   | [] -> []
 
-let rec filter f = function
+let rec filter f = let open Ical in function
   | (Block(loc, s, v) as e)::tl ->
     if f e then
       Block(loc, s, filter f v)::filter f tl
@@ -496,16 +495,16 @@ let rec filter f = function
       filter f tl
   | [] -> []
 
-let rec fold_on_assocs f accu = function
+let rec fold_on_assocs f accu =  let open Ical in function
   | Block(_, _, v)::tl -> fold_on_assocs f (fold_on_assocs f accu v) tl
   | Assoc(_, k, _, v)::tl -> fold_on_assocs f (f accu k v) tl
   | [] -> accu
 
-let is_nonempty_block = function
+let is_nonempty_block = let open Ical in function
     | Block(_, _, []) -> false
     | _ -> true
 
-let is_empty_block = function
+let is_empty_block = let open Ical in function
     | Block(_, _, []) -> true
     | _ -> false
 
@@ -584,10 +583,11 @@ let limit_to_75_bytes ls = (* limit lines to 75 bytes *)
 
 
 let to_string ?(f=(fun _ -> None)) t =
+ let open Ical in
   let string_of_p p =
     let b = Buffer.create 42 in
     List.iter
-      (fun (k, v) -> bprintf b ";%s:%s" k v#to_string)
+      (fun (k, v) -> bprintf b ";%s:%s" k (v.to_string()))
       p;
     Buffer.contents b
   in
@@ -605,7 +605,7 @@ let to_string ?(f=(fun _ -> None)) t =
          | Some x ->
            ical_format [s ^ string_of_p p ^ ":" ^ x]
          | None ->
-           limit_to_75_bytes [s ^ string_of_p p ^ ":" ^ r#to_string]);
+           limit_to_75_bytes [s ^ string_of_p p ^ ":" ^ r.to_string()]);
       Buffer.add_string b "\r\n";
       loop tl
   in
@@ -729,19 +729,18 @@ struct
         }
       end
 
-  let make location t =
-    object
-      method location = location
-      method to_string = to_string t
-      method to_pretty = to_string t
-      method value = `Datetime t
-    end
+  let make location t = {
+    location;
+    to_string = (fun () -> to_string t);
+    to_pretty = (fun () -> to_string t);
+    Ical.value = `Datetime t;
+  }
 
-  let parse_datetime t =
+  let parse_datetime t = let open Ical in
     map
       (function
         | Assoc(loc, ("DTSTAMP"|"DTSTART"|"DTEND" as l), p, v) ->
-          Assoc(loc, l, p, make v#location (parse v#location v#to_string))
+          Assoc(loc, l, p, make v.location (parse v.location (v.to_string())))
         | x -> x)
       t
 end
