@@ -77,7 +77,7 @@ let _ =
   let data =
     let b = Buffer.create 42 in
     List.iter (fun i -> Buffer.add_string b (channel_contents i)) !inputs;
-    parse_ical(lex_ical(Buffer.contents b))
+    parse_ical(Lexing.lex_ical(Buffer.contents b))
   in
   fprintf
     !out
