@@ -24,7 +24,7 @@ let channel_contents ic =
 
 let simple_cat ic oc =
   let s = channel_contents ic in
-  let l = lex_ical s in
+  let l = Lexing.lex_ical s in
   let p : 'a Ical.t = parse_ical l in
   let d = Datetime.parse_datetime p in
   let o = to_string ~f:(fun _ -> None) d in

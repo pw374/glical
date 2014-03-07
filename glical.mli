@@ -37,7 +37,7 @@ val extract_values :
   ?ks:SSet.t ->
   ?k:string ->
   ([> `Raw of string ] as 'a) Ical.t ->
-  'a value list
+  'a Ical.value list
 
 (** [list_keys_rev ical] is like [list_keys ical] except that the
     result is reversed and performs faster. *)
