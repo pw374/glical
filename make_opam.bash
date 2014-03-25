@@ -20,17 +20,29 @@ mkdir $p
 
 cp Makefile.lib $p/
 
+DESCR='Glical: glancing at iCalendar data.'
+
+cat > META <<EOF
+version = "$V"
+description = "$DESCR."
+archive(byte) = "glical.cma"
+archive(native) = "glical.cmxa"
+exists_if = "glical.cma"
+EOF
+
 cat > $p/Makefile <<\EOF
 build:glical.cma glical.cmxa	
 
 install:glical.cma glical.cmxa glical.mli glical.cmi glical.cmo glical.cmx glical_kernel.cmi glical_kernel.mli glical_kernel.cmo glical_kernel.cmx
 	mkdir -p ${PREFIX}/lib/glical/
-	cp $+ ${PREFIX}/lib/glical/
+	ocamlfind install -destdir ${PREFIX}/lib glical $+ META
+#	cp $+ ${PREFIX}/lib/glical/
 #	cp glical ${PREFIX}/bin/
 
 uninstall:
-	rm -f ${PREFIX}/lib/glical/glical.cm{a,xa}
-	-rmdir ${PREFIX}/lib/glical
+	ocamlfind remove -destdir ${PREFIX}/lib glical
+#	rm -f ${PREFIX}/lib/glical/glical.cm{a,xa}
+#	-rmdir ${PREFIX}/lib/glical
 #	rm -f ${PREFIX}/bin/glical
 
 include Makefile.prefix
@@ -54,7 +66,7 @@ fi
 EOF
 chmod a+x $p/configure
 
-cp glical.ml glical_kernel.ml glical.mli glical_cat.ml glical_kernel.mli $p/
+cp glical.ml glical_kernel.ml glical.mli glical_cat.ml glical_kernel.mli META $p/
 
 tar cvzf $p.tar.gz $p
 
@@ -64,8 +76,8 @@ tar cvzf $p.tar.gz $p
 P=glical.$V
 mkdir $P
 
-cat > $P/descr <<\EOF
-Glical: glancing at iCalendar data.
+cat > $P/descr <<EOF
+$DESCR
 A library to glance at iCalendar data using OCaml.
 EOF
 cat > $P/opam <<\EOF
