@@ -97,6 +97,9 @@ remove: [
   [make "uninstall"]
 ]
 ocaml-version: [ >= "3.12.1" ]
+depends: [
+  "ocamlfind"
+]
 tags: [
   "org:ocamllabs"
 ]
