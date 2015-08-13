@@ -33,7 +33,7 @@ EOF
 cat > $p/Makefile <<\EOF
 build:glical.cma glical.cmxa	
 
-install:glical.cma glical.cmxa glical.mli glical.cmi glical.cmo glical.cmx glical_kernel.cmi glical_kernel.mli glical_kernel.cmo glical_kernel.cmx
+install:glical.cma glical.cmxa glical.a glical.mli glical.cmi glical.cmo glical.cmx glical_kernel.cmi glical_kernel.mli glical_kernel.cmo glical_kernel.cmx
 	mkdir -p ${PREFIX}/lib/glical/
 	ocamlfind install -destdir ${PREFIX}/lib glical $+ META
 #	cp $+ ${PREFIX}/lib/glical/
