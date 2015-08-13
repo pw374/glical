@@ -83,26 +83,30 @@ EOF
 cat > $P/opam <<\EOF
 maintainer: "philippe.wang@gmail.com"
 name: "glical"
-opam-version: "1"
+opam-version: "1.2"
 license: "ISC"
 authors: [ "Philippe Wang <philippe.wang@gmail.com>" ]
 homepage: "https://github.com/pw374/glical"
 build: [
   ["./configure" "-prefix" prefix]
   [make "build"]
+]
+install: [
   [make "install"]
 ]
 remove: [
   ["./configure" "-prefix" prefix]
   [make "uninstall"]
 ]
-ocaml-version: [ >= "3.12.1" ]
 depends: [
   "ocamlfind"
 ]
 tags: [
   "org:ocamllabs"
 ]
+available: [ocaml-version >= "3.12.1"]
+dev-repo: "https://github.com/pw374/glical.git"
+bug-reports: "https://github.com/pw374/glical/issues"
 EOF
 
 cat > $P/url <<EOF
@@ -111,13 +115,17 @@ checksum: "$(md5 < $p.tar.gz)"
 EOF
 
 cat <<EOF
+###############################################################################
 # TODO:
 mkdir -p ../pw374.github.io/distrib/glical
 cp $p.tar.gz ../pw374.github.io/distrib/glical/
-cd "$PWD/../pw374.github.io/distrib/glical/" && git add $p.tar.gz && git commit $p.tar.gz -m 'add $p.tar.gz'
+cd "$PWD/../pw374.github.io/distrib/glical/" && git add $p.tar.gz && git commit $p.tar.gz -m 'add $p.tar.gz' && git push
 
 mkdir -p "$PWD/../opam-repository/packages/glical/"
 cp -r "$PWD/$P" "$PWD/../opam-repository/packages/glical/"
 cd "$PWD/../opam-repository/packages/glical/"
-
+git pull
+git add "$P"
+git push pw374
+###############################################################################
 EOF
