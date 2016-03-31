@@ -186,7 +186,7 @@ let lex_ical s =
     !name, List.rev !parameters
   in
   let sl = String.length s in
-  let rec loop lines i (colon:bool) (dquotes:bool) (lc:int) (cc:int) =
+  let rec loop lines i ~colon ~dquotes (lc:int) (cc:int) =
     (* colon: separator between  *)
     if i >= sl then
       let name, parameters = extract_np (Buffer.contents name) in
@@ -203,12 +203,12 @@ let lex_ical s =
         if colon then
           begin
             Buffer.add_char value c;
-            loop lines (i+1) colon (not dquotes) lc (cc+1)
+            loop lines (i+1) ~colon ~dquotes:(not dquotes) lc (cc+1)
           end
         else
           begin
             Buffer.add_char name c;
-            loop lines (i+1) colon (not dquotes) lc (cc+1)
+            loop lines (i+1) ~colon ~dquotes:(not dquotes) lc (cc+1)
           end
       | '\n' ->
         begin
@@ -234,52 +234,53 @@ let lex_ical s =
             in
             Buffer.clear name; Buffer.clear value;
             name_start := (lc+1,0);
-            loop (nv::lines) (i+1) false dquotes (lc+1) 0
+            loop (nv::lines) (i+1) ~colon:false ~dquotes (lc+1) 0
           else
             begin
               (* syntax_assert colon "unexpected end of line" lc cc; *)
-              loop lines (i+2) colon dquotes (lc+1) 0
+              loop lines (i+2) ~colon ~dquotes (lc+1) 0
             end
         end
       | '\r' -> (* just ignore \r for now *)
-        loop lines (i+1) colon dquotes lc cc
+        loop lines (i+1) ~colon ~dquotes lc cc
       | ' ' as c ->
         if colon then
           Buffer.add_char value c
         else if dquotes then
           Buffer.add_char name c
         else
-          syntax_error "unexpected space before colon" lc cc;
-        loop lines (i+1) colon dquotes lc (cc+1)
+          (* syntax_error "unexpected space before colon" lc cc; *)
+          Buffer.add_char name c;
+        loop lines (i+1) ~colon ~dquotes lc (cc+1)
       | ':' as c ->
         if dquotes then
           begin
             Buffer.add_char value c;
-            loop lines (i+1) colon dquotes lc (cc+1)
+            loop lines (i+1) ~colon ~dquotes lc (cc+1)
           end
         else if colon then
           begin
             Buffer.add_char value c;
-            loop lines (i+1) true dquotes lc (cc+1)
+            loop lines (i+1) ~colon:true ~dquotes lc (cc+1)
           end
         else
           begin
             value_start := (lc,cc);
-            loop lines (i+1) true dquotes lc (cc+1)
+            loop lines (i+1) ~colon:true ~dquotes lc (cc+1)
           end
       | c ->
         if colon then
           begin
             Buffer.add_char value c;
-            loop lines (i+1) colon dquotes lc (cc+1)
+            loop lines (i+1) ~colon ~dquotes lc (cc+1)
           end
         else
           begin
             Buffer.add_char name c;
-            loop lines (i+1) colon dquotes lc (cc+1)
+            loop lines (i+1) ~colon ~dquotes lc (cc+1)
           end
   in
-  List.rev (loop [] 0 false false 1 0)
+  List.rev (loop [] 0 ~colon:false ~dquotes:false 1 0)
 end
 
 
