@@ -31,7 +31,7 @@ exists_if = "glical.cma"
 EOF
 
 cat > $p/Makefile <<\EOF
-build:glical.cma glical.cmxa	
+build:glical.cma glical.cmxa
 
 install:glical.cma glical.cmxa glical.a glical.mli glical.cmi glical.cmo glical.cmx glical_kernel.cmi glical_kernel.mli glical_kernel.cmo glical_kernel.cmx
 	mkdir -p ${PREFIX}/lib/glical/
@@ -126,6 +126,7 @@ cp -r "$PWD/$P" "$PWD/../opam-repository/packages/glical/"
 cd "$PWD/../opam-repository/packages/glical/"
 git pull
 git add "$P"
+git commit -m 'add $p'
 git push pw374
 ###############################################################################
 EOF
