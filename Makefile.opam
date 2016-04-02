@@ -1,0 +1,18 @@
+build:glical.cma glical.cmxa	
+
+install:glical.cma glical.cmxa glical.a glical.mli glical.cmi glical.cmo glical.cmx glical_kernel.cmi glical_kernel.mli glical_kernel.cmo glical_kernel.cmx
+	mkdir -p ${PREFIX}/lib/glical/
+	ocamlfind install -destdir ${PREFIX}/lib glical $+ META
+#	cp $+ ${PREFIX}/lib/glical/
+#	cp glical ${PREFIX}/bin/
+
+uninstall:
+	ocamlfind remove -destdir ${PREFIX}/lib glical
+#	rm -f ${PREFIX}/lib/glical/glical.cm{a,xa}
+#	-rmdir ${PREFIX}/lib/glical
+#	rm -f ${PREFIX}/bin/glical
+
+include Makefile.prefix
+
+include Makefile.lib
+

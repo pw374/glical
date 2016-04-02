@@ -1,0 +1,5 @@
+version = "dev"
+description = "Glical: glancing at iCalendar data.."
+archive(byte) = "glical.cma"
+archive(native) = "glical.cmxa"
+exists_if = "glical.cma"
