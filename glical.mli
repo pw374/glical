@@ -16,6 +16,11 @@ module SSet : Set.S with type elt = String.t
     cf. [Sys.max_string_length] *)
 val channel_contents : in_channel -> string
 
+(** [file_contents filename] eats all contents of [filename] and returns it as
+    a string. Beware: if the contents is very big, it might fail,
+    cf. [Sys.max_string_length] *)
+val file_contents : string -> string
+
 (** [simple_cat ic oc] reads some iCalendar data from [ic] and outputs
     it on [oc]. Note that this fails if there are syntax errors. *)
 val simple_cat : in_channel -> out_channel -> unit

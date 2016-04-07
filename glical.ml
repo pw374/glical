@@ -22,6 +22,12 @@ let channel_contents ic =
   end;
   Buffer.contents b
 
+let file_contents filename =
+  let i = open_in filename in
+  let r = channel_contents i in
+  close_in i;
+  r
+
 let simple_cat ic oc =
   let s = channel_contents ic in
   let l = Lexing.lex_ical s in
