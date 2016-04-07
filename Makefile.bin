@@ -4,15 +4,20 @@
 # Licence: ISC
 ###########################################################################
 
-glical:glical.cma glical_bin.cmo
-	ocamlc -o $@ $+
+glical.byte:glical.cma glical_bin.cmo
+	ocamlfind ocamlc -o $@ $+
 
 glical_bin.cmo:glical_bin.ml
-	ocamlc -c $@ $+
+	ocamlfind ocamlc -c $@ $+
 
-glical.opt:glical.cmxa glical_test.ml
-	ocamlopt -o $< $+
+glical_bin.cmx:glical_bin.ml
+	ocamlfind ocamlopt -c $@ $+
 
+glical.opt:glical.cmxa glical_bin.cmx
+	ocamlfind ocamlopt -o $@ $+
+
+glical:glical.opt
+	cp $< $@
 
 # Permission to use, copy, modify, and/or distribute this software
 # for any purpose with or without fee is hereby granted, provided
