@@ -25,10 +25,25 @@ val file_contents : string -> string
     it on [oc]. Note that this fails if there are syntax errors. *)
 val simple_cat : in_channel -> out_channel -> unit
 
-(** [extract_assocs ?kl ?ks ?k ical] returns the iCalendar values that
+(** [get ?maxdepth ?kl ?ks ?k ical] returns the iCalendar elements that
     are associated with the keys specified in [kl], [ks] and/or [k].
-    Empty blocks are not kept. *)
+    [maxdepth] is the number of authorized traversals of [Block _] elements.
+    If [maxdepth = 0] then no [Block _] will ever be returned. *)
+val get :
+  ?maxdepth:int ->
+  ?kl:key list ->
+  ?ks:SSet.t ->
+  ?k:string ->
+  ([> `Raw of string ] as 'a) Ical.t ->
+  'a Ical.t
+
+(** [extract_assocs ?maxdepth ?kl ?ks ?k ical] returns the iCalendar values that
+    are associated with the keys specified in [kl], [ks] and/or [k].
+    Empty blocks are not kept.
+    [maxdepth] is the number of authorized traversals of [Block _] elements.
+    If [maxdepth = 0] then no [Block _] will ever be returned. *)
 val extract_assocs :
+  ?maxdepth:int ->
   ?kl:key list ->
   ?ks:SSet.t ->
   ?k:string ->
