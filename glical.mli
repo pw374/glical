@@ -25,10 +25,12 @@ val file_contents : string -> string
     it on [oc]. Note that this fails if there are syntax errors. *)
 val simple_cat : in_channel -> out_channel -> unit
 
-(** [get ?maxdepth ?kl ?ks ?k ical] returns the iCalendar elements that
-    are associated with the keys specified in [kl], [ks] and/or [k].
+(** [get ?maxdepth ?kl ?ks ?k ical] returns the iCalendar elements
+    (blocks and associations) that are associated with the names or keys
+    specified in [kl], [ks] and/or [k].
     [maxdepth] is the number of authorized traversals of [Block _] elements.
-    If [maxdepth = 0] then no [Block _] will ever be returned. *)
+    If [maxdepth = 0] then no [Block _] will ever be returned.
+    The default value of [maxdepth] is [max_int]. *)
 val get :
   ?maxdepth:int ->
   ?kl:key list ->
