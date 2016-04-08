@@ -38,28 +38,23 @@ let simple_cat ic oc =
 
 
 let get ?(maxdepth=max_int) ?(kl=[]) ?(ks=SSet.empty) ?k ical : 'a t =
-  let rec block ~maxdepth ?(kl=[]) ?(ks=SSet.empty) ?(k=None) = function
-    | [] -> false
-    | Block(_, _, l) :: tl ->
-      let maxdepth = pred maxdepth in
-      maxdepth > -1 &&
-      (block ~maxdepth ~kl ~ks ~k l || block ~maxdepth ~kl ~ks ~k tl)
-    | Assoc(_, key, _, _)::tl ->
-      let maxdepth = pred maxdepth in
-      (Some key = k || SSet.mem key ks || List.mem key kl
-       || (maxdepth > -1 && block ~maxdepth ~kl ~ks ~k tl))
-  in
-  let i =
-    filter
-      (function
-        | Block(_, name, l) ->
-          (Some name = k || SSet.mem name ks || List.mem name kl)
-          || block ~maxdepth:(pred maxdepth) ~kl ~ks ~k l
-        | Assoc(_, key, _, _) ->
-          Some key = k || SSet.mem key ks || List.mem key kl)
-      ical
-  in
-  i
+  let res = ref [] in
+  let rec loop_one maxdepth = function
+    | Block (_, name, contents) as b ->
+      if maxdepth = 0 then
+        ()
+      else if (Some name = k || SSet.mem name ks || List.mem name kl) then
+        res := b :: !res
+      else
+        loop (pred maxdepth) contents
+    | Assoc(_, key, _, _) as a ->
+      if (Some key = k || SSet.mem key ks || List.mem key kl) then
+        res := a :: !res
+      else
+        ()
+  and loop maxdepth ical = List.iter (loop_one maxdepth) ical in
+  loop maxdepth ical;
+  List.rev !res
 
 
 let extract_assocs ?(maxdepth=max_int) ?(kl=[]) ?(ks=SSet.empty) ?k ical : 'a t =
