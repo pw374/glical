@@ -41,7 +41,7 @@ let get ?(maxdepth=max_int) ?(kl=[]) ?(ks=SSet.empty) ?k ical : 'a t =
   let res = ref [] in
   let rec loop_one maxdepth = function
     | Block (_, name, contents) as b ->
-      if maxdepth = 0 then
+      if maxdepth <= 0 then
         ()
       else if (Some name = k || SSet.mem name ks || List.mem name kl) then
         res := b :: !res
