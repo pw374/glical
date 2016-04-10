@@ -22,6 +22,12 @@ let channel_contents ic =
   end;
   Buffer.contents b
 
+let file_contents filename =
+  let i = open_in filename in
+  let r = channel_contents i in
+  close_in i;
+  r
+
 let simple_cat ic oc =
   let s = channel_contents ic in
   let l = Lexing.lex_ical s in
@@ -31,20 +37,44 @@ let simple_cat ic oc =
   fprintf oc "%s%!" o
 
 
-let extract_assocs ?(kl=[]) ?(ks=SSet.empty) ?k ical : 'a t =
+let get ?(maxdepth=max_int) ?(kl=[]) ?(ks=SSet.empty) ?k ical : 'a t =
+  let res = ref [] in
+  let rec loop_one maxdepth = function
+    | Block (_, name, contents) as b ->
+      if maxdepth = 0 then
+        ()
+      else if (Some name = k || SSet.mem name ks || List.mem name kl) then
+        res := b :: !res
+      else
+        loop (pred maxdepth) contents
+    | Assoc(_, key, _, _) as a ->
+      if (Some key = k || SSet.mem key ks || List.mem key kl) then
+        res := a :: !res
+      else
+        ()
+  and loop maxdepth ical = List.iter (loop_one maxdepth) ical in
+  loop maxdepth ical;
+  List.rev !res
+
+
+let extract_assocs ?(maxdepth=max_int) ?(kl=[]) ?(ks=SSet.empty) ?k ical : 'a t =
   (* [block] is necessary for performance issues, otherwise
      calling [extract_assocs] would have been sufficient. *)
-  let rec block ?(kl=[]) ?(ks=SSet.empty) ?(k=None) = function
+  let rec block ~maxdepth ?(kl=[]) ?(ks=SSet.empty) ?(k=None) = function
     | [] -> false
-    | Block(_, _, l) :: tl -> block ~kl ~ks ~k l || block ~kl ~ks ~k tl
+    | Block(_, _, l) :: tl ->
+      let maxdepth = pred maxdepth in
+      maxdepth > -1 &&
+      (block ~maxdepth ~kl ~ks ~k l || block ~maxdepth ~kl ~ks ~k tl)
     | Assoc(_, key, _, _)::tl ->
-      Some key = k || SSet.mem key ks || List.mem key kl
-      || block ~kl ~ks ~k tl
+      let maxdepth = pred maxdepth in
+      (Some key = k || SSet.mem key ks || List.mem key kl
+       || (maxdepth > -1 && block ~maxdepth ~kl ~ks ~k tl))
   in
   let i =
     filter
       (function
-        | Block(_, _, l) -> block ~kl ~ks ~k l
+        | Block(_, _, l) -> block ~maxdepth:(pred maxdepth) ~kl ~ks ~k l
         | Assoc(_, key, _, _) ->
           Some key = k || SSet.mem key ks || List.mem key kl)
       ical

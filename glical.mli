@@ -16,14 +16,36 @@ module SSet : Set.S with type elt = String.t
     cf. [Sys.max_string_length] *)
 val channel_contents : in_channel -> string
 
+(** [file_contents filename] eats all contents of [filename] and returns it as
+    a string. Beware: if the contents is very big, it might fail,
+    cf. [Sys.max_string_length] *)
+val file_contents : string -> string
+
 (** [simple_cat ic oc] reads some iCalendar data from [ic] and outputs
     it on [oc]. Note that this fails if there are syntax errors. *)
 val simple_cat : in_channel -> out_channel -> unit
 
-(** [extract_assocs ?kl ?ks ?k ical] returns the iCalendar values that
+(** [get ?maxdepth ?kl ?ks ?k ical] returns the iCalendar elements
+    (blocks and associations) that are associated with the names or keys
+    specified in [kl], [ks] and/or [k].
+    [maxdepth] is the number of authorized traversals of [Block _] elements.
+    If [maxdepth = 0] then no [Block _] will ever be returned.
+    The default value of [maxdepth] is [max_int]. *)
+val get :
+  ?maxdepth:int ->
+  ?kl:key list ->
+  ?ks:SSet.t ->
+  ?k:string ->
+  ([> `Raw of string ] as 'a) Ical.t ->
+  'a Ical.t
+
+(** [extract_assocs ?maxdepth ?kl ?ks ?k ical] returns the iCalendar values that
     are associated with the keys specified in [kl], [ks] and/or [k].
-    Empty blocks are not kept. *)
+    Empty blocks are not kept.
+    [maxdepth] is the number of authorized traversals of [Block _] elements.
+    If [maxdepth = 0] then no [Block _] will ever be returned. *)
 val extract_assocs :
+  ?maxdepth:int ->
   ?kl:key list ->
   ?ks:SSet.t ->
   ?k:string ->

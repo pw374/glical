@@ -100,7 +100,11 @@ val map :
 
 
 (** [iter f ical] applies the function [f] to all [Assoc(loc, s, r)] elements
-    of [ical]. *)
+    of [ical]. Note that [f] doesn't process any [Block _]. If you don't want
+    to iter only on [Assoc _] elements, you might want to use [List.iter]
+    instead. It doesn't make much sense to process all [Block _] and [Assoc _]
+    elements in an iter function because children of [Block _] elements are
+    passed to [f] multiple times. *)
 val iter :
   (([> `Raw of string ] as 'a) Ical.element -> unit) ->
   'a Ical.t -> unit
