@@ -149,8 +149,8 @@ let lex_ical s =
     let parameters = ref [] in
     let rec loop (dq:bool) (p:bool) (eq:bool) i =
       let loop ?(dq=dq) ?(p=p) ?(eq=eq) i = loop dq p eq i in
-      if i = String.length s then
-        ()
+      if i = String.length s then (*parameters end, there may be apending param yet to register*)
+        (if p && eq then parameters := (!k, Buffer.contents b) :: !parameters;())
       else match s.[i] with
         | '"' ->
           Buffer.add_char b s.[i];
